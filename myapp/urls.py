@@ -1,8 +1,17 @@
 from django.urls import path
-
+from django.core.management import call_command
+from django.http import HttpResponse
 from . import views
 
+# Temporary migration function
+def run_migrate(request):
+    call_command('migrate')
+    return HttpResponse("MIGRATIONS DONE")
+
 urlpatterns = [
+    # Temporary migration URL
+    path("run-migrate/", run_migrate),
+
     path('', views.dashboard, name='dashboard'),
     path('register/', views.register_view, name='register'),
     path('login/', views.login_view, name='login'),
