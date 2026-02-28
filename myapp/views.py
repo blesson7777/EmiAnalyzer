@@ -318,6 +318,18 @@ def _validate_loan_form_submission(request):
     if principal_error:
         errors.append(principal_error)
 
+    months_paid_input_empty = not form_values['months_paid']
+    months_paid = None
+    if not months_paid_input_empty:
+        months_paid, months_paid_error = _validate_optional_integer_field(
+            form_values['months_paid'],
+            'EMIs already paid',
+            min_value=0,
+            max_value=600,
+        )
+        if months_paid_error:
+            errors.append(months_paid_error)
+
     parsed_start_date = None
     parsed_end_date = None
     start_date_raw = form_values['start_date']
@@ -333,7 +345,17 @@ def _validate_loan_form_submission(request):
         except ValueError:
             errors.append('End date is invalid.')
 
-    start_min_date, start_max_date = _loan_start_window()
+    if (
+        not parsed_start_date
+        and not start_date_raw
+        and months_paid is not None
+        and not months_paid_input_empty
+    ):
+        parsed_start_date = _shift_date_by_months(timezone.localdate(), -months_paid)
+        form_values['start_date'] = parsed_start_date.isoformat()
+        start_auto_calculated = True
+
+    start_min_date, start_max_date = _loan_start_window(months_back=months_paid)
     is_edit_flow = bool(getattr(request, 'resolver_match', None)) and request.resolver_match.url_name == 'edit_loan'
     if (
         parsed_start_date
@@ -375,18 +397,6 @@ def _validate_loan_form_submission(request):
     else:
         errors.append('Provide start date and loan period details.')
 
-    months_paid_input_empty = not form_values['months_paid']
-    months_paid = None
-    if not months_paid_input_empty:
-        months_paid, months_paid_error = _validate_optional_integer_field(
-            form_values['months_paid'],
-            'EMIs already paid',
-            min_value=0,
-            max_value=600,
-        )
-        if months_paid_error:
-            errors.append(months_paid_error)
-
     if months_paid is None and months_paid_input_empty:
         if parsed_start_date:
             months_paid = _elapsed_months(parsed_start_date, reference_date=timezone.localdate())
@@ -396,8 +406,21 @@ def _validate_loan_form_submission(request):
     elif months_paid is None:
         months_paid = 0
 
+    input_months_paid = months_paid
     if period_months is not None:
         months_paid = min(months_paid, max(0, period_months - 1))
+
+    if (
+        start_auto_calculated
+        and parsed_start_date
+        and input_months_paid is not None
+        and months_paid != input_months_paid
+    ):
+        parsed_start_date = _shift_date_by_months(timezone.localdate(), -months_paid)
+        form_values['start_date'] = parsed_start_date.isoformat()
+        if period_months is not None:
+            parsed_end_date = _shift_date_by_months(parsed_start_date, period_months - 1)
+            form_values['end_date'] = parsed_end_date.isoformat()
 
     if months_paid_input_empty or months_paid_auto_calculated:
         form_values['months_paid'] = str(months_paid)
@@ -780,9 +803,15 @@ def _months_to_date(reference_date, target_date):
     return max(0, months)
 
 
-def _loan_start_window(reference_date=None):
+def _loan_start_window(reference_date=None, months_back=None):
     today = reference_date or timezone.localdate()
-    min_start = _shift_date_by_months(today, -2)
+    lookback_months = 2
+    if months_back is not None:
+        try:
+            lookback_months = max(lookback_months, int(months_back))
+        except (TypeError, ValueError):
+            pass
+    min_start = _shift_date_by_months(today, -lookback_months)
     return min_start, today
 
 
@@ -1982,6 +2011,8 @@ def add_loan(request):
     if request.method == 'POST':
         cleaned, form_values, errors = _validate_loan_form_submission(request)
         if errors:
+            error_months_paid = _to_int(form_values.get('months_paid'), default=0)
+            error_start_date_min, _ = _loan_start_window(months_back=max(0, error_months_paid))
             for error in errors:
                 messages.error(request, error)
             return _render(
@@ -1995,7 +2026,7 @@ def add_loan(request):
                     'other_loans_emi': other_loans_emi,
                     'green_limit': settings_obj.emi_green_limit,
                     'yellow_limit': settings_obj.emi_yellow_limit,
-                    'start_date_min': start_date_min.isoformat(),
+                    'start_date_min': error_start_date_min.isoformat(),
                     'start_date_max': start_date_max.isoformat(),
                 },
             )
@@ -2071,6 +2102,9 @@ def edit_loan(request, loan_id):
     if request.method == 'POST':
         cleaned, form_values, errors = _validate_loan_form_submission(request)
         if errors:
+            error_months_paid = _to_int(form_values.get('months_paid'), default=0)
+            error_start_date_min, _ = _loan_start_window(months_back=max(0, error_months_paid))
+            error_start_date_min = min(error_start_date_min, loan.start_date)
             for error in errors:
                 messages.error(request, error)
             return _render(
@@ -2084,7 +2118,7 @@ def edit_loan(request, loan_id):
                     'other_loans_emi': other_loans_emi,
                     'green_limit': settings_obj.emi_green_limit,
                     'yellow_limit': settings_obj.emi_yellow_limit,
-                    'start_date_min': start_date_min.isoformat(),
+                    'start_date_min': error_start_date_min.isoformat(),
                     'start_date_max': start_date_max.isoformat(),
                 },
             )

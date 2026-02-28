@@ -44,7 +44,7 @@
             <div class="col-md-6">
                 <label class="form-label">Monthly EMI Amount</label>
                 <input type="number" class="form-control" id="monthlyEmiInput" name="monthly_emi" min="1" value="{{ form_values.monthly_emi }}" placeholder="Leave blank to auto-calculate EMI">
-                <small class="form-text text-muted" id="emiPercentHint">Enter EMI to see EMI percentage impact.</small>
+                <small class="form-text text-muted" id="emiPercentHint">Enter interest or EMI details to view current interest percentage.</small>
             </div>
             <div class="col-md-6">
                 <label class="form-label" id="interestRateLabel">Interest Rate (%)</label>
@@ -69,7 +69,7 @@
                 <input type="date" class="form-control" id="endDateInput" name="end_date" value="{{ form_values.end_date }}" readonly>
             </div>
             <div class="col-md-6">
-                <label class="form-label">Projected EMI Ratio (%)</label>
+                <label class="form-label">Current Interest (%)</label>
                 <input type="text" class="form-control" id="emiPercentInput" value="" readonly>
             </div>
             <div class="col-12">
@@ -113,7 +113,9 @@
     const yellowLimit = Number('{{ yellow_limit|default:50 }}');
     const startDateMin = '{{ start_date_min|default:"" }}';
     const startDateMax = '{{ start_date_max|default:"" }}';
+    let baseStartDateMin = startDateMin || '';
     let monthsPaidManual = false;
+    let emiAutoCalculated = false;
 
     function parseIsoDate(value) {
         if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
@@ -146,26 +148,43 @@
         return new Date(monthBase.getFullYear(), monthBase.getMonth(), targetDay);
     }
 
-    function applyDateBoundsAndDefaults() {
-        if (!startDateMin || !startDateMax) {
-            const today = new Date();
-            const maxDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-            const minDate = addMonthsClamped(maxDate, -2);
-            if (!startDateMin) {
-                startDateInput.min = formatIsoDate(minDate);
-            }
-            if (!startDateMax) {
-                startDateInput.max = formatIsoDate(maxDate);
-            }
+    function todayLocalDate() {
+        const today = new Date();
+        return new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    }
+
+    function startDateFromPaidMonths(paidMonths) {
+        const current = todayLocalDate();
+        return addMonthsClamped(current, -paidMonths);
+    }
+
+    function dynamicStartMinFromPaidMonths(paidMonths) {
+        if (!Number.isFinite(paidMonths) || paidMonths < 0) {
+            return baseStartDateMin;
         }
+        const paidStartIso = formatIsoDate(startDateFromPaidMonths(paidMonths));
+        if (!baseStartDateMin) {
+            return paidStartIso;
+        }
+        return paidStartIso < baseStartDateMin ? paidStartIso : baseStartDateMin;
+    }
+
+    function applyDateBoundsAndDefaults() {
+        const maxDate = todayLocalDate();
+        if (!baseStartDateMin) {
+            const minDate = addMonthsClamped(maxDate, -2);
+            baseStartDateMin = formatIsoDate(minDate);
+        }
+        startDateInput.min = baseStartDateMin;
+        startDateInput.max = startDateMax || formatIsoDate(maxDate);
+        startDateInput.dataset.autoFromPaid = '0';
         if (!startDateInput.value && startDateInput.max) {
             startDateInput.value = startDateInput.max;
         }
     }
 
     function elapsedMonthsFromCurrentDate(start) {
-        const today = new Date();
-        const current = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const current = todayLocalDate();
         if (current <= start) {
             return 0;
         }
@@ -178,10 +197,29 @@
 
     function updateMonthsPaidAuto() {
         if (monthsPaidManual) {
-            monthsPaidHint.textContent = 'Using manual value.';
+            const paidMonths = Number.parseInt(monthsPaid.value, 10);
+            if (Number.isFinite(paidMonths) && paidMonths >= 0) {
+                const suggestedStartIso = formatIsoDate(startDateFromPaidMonths(paidMonths));
+                const dynamicStartMin = dynamicStartMinFromPaidMonths(paidMonths);
+                if (dynamicStartMin) {
+                    startDateInput.min = dynamicStartMin;
+                }
+                const shouldAutoSetStart = !startDateInput.value || startDateInput.dataset.autoFromPaid === '1';
+                if (shouldAutoSetStart) {
+                    startDateInput.value = suggestedStartIso;
+                    startDateInput.dataset.autoFromPaid = '1';
+                }
+                monthsPaidHint.textContent = `Using manual value. Suggested start date: ${suggestedStartIso} for ${paidMonths} paid month(s).`;
+            } else {
+                startDateInput.min = baseStartDateMin;
+                monthsPaidHint.textContent = 'Using manual value.';
+            }
             monthsPaidHint.className = 'form-text text-info';
             return;
         }
+
+        startDateInput.min = baseStartDateMin;
+        startDateInput.dataset.autoFromPaid = '0';
         const start = parseIsoDate(startDateInput.value);
         const period = Number.parseInt(loanPeriodMonths.value, 10);
         if (!start) {
@@ -200,44 +238,107 @@
     }
 
     function updateEmiPercentHint() {
-        const emi = Number(monthlyEmiInput.value);
-        if (!emi || emi <= 0) {
-            emiPercentHint.textContent = 'Enter EMI to see EMI percentage impact.';
-            emiPercentHint.className = 'form-text text-muted';
-            emiPercentInput.value = '';
-            return;
+        function emiForRate(principal, monthlyRate, tenureMonths) {
+            if (principal <= 0 || tenureMonths <= 0) {
+                return null;
+            }
+            if (monthlyRate <= 0) {
+                return principal / tenureMonths;
+            }
+            const growth = Math.pow(1 + monthlyRate, tenureMonths);
+            const denominator = growth - 1;
+            if (denominator <= 0) {
+                return null;
+            }
+            return (principal * monthlyRate * growth) / denominator;
         }
-        if (!incomeTotal || incomeTotal <= 0) {
-            emiPercentHint.textContent = 'Add income details to view EMI percentage.';
-            emiPercentHint.className = 'form-text text-warning';
-            emiPercentInput.value = '';
+
+        function inferAnnualRatePercent(principal, emi, tenureMonths) {
+            if (principal <= 0 || emi <= 0 || tenureMonths <= 0) {
+                return null;
+            }
+            const minimumEmi = principal / tenureMonths;
+            if (emi < minimumEmi) {
+                return null;
+            }
+            if (Math.abs(emi - minimumEmi) < 1e-8) {
+                return 0.0;
+            }
+
+            let low = 0.0;
+            let high = 1.0;
+            for (let i = 0; i < 120; i += 1) {
+                const mid = (low + high) / 2;
+                const candidate = emiForRate(principal, mid, tenureMonths);
+                if (candidate === null) {
+                    return null;
+                }
+                if (candidate > emi) {
+                    high = mid;
+                } else {
+                    low = mid;
+                }
+            }
+            return ((low + high) / 2) * 1200;
+        }
+
+        const principal = Number(principalInput.value);
+        const emi = Number(monthlyEmiInput.value);
+        const periodMonths = Number(loanPeriodMonths.value);
+        const paidMonths = Number(monthsPaid.value || 0);
+        const remainingMonths = periodMonths - paidMonths;
+        const interestRateRaw = interestRateInput.value.trim();
+        const interestRate = Number(interestRateRaw);
+
+        if (interestRateRaw && !Number.isNaN(interestRate) && interestRate >= 0) {
+            const annualRate = interestMode.value === 'monthly' ? (interestRate * 12) : interestRate;
+            const monthlyRate = interestMode.value === 'monthly' ? interestRate : (interestRate / 12);
+            emiPercentInput.value = `${annualRate.toFixed(2)}% annual`;
+            emiPercentHint.textContent = `Current interest: ${annualRate.toFixed(2)}% yearly (${monthlyRate.toFixed(2)}% monthly).`;
+            emiPercentHint.className = 'form-text text-info';
             return;
         }
 
-        const loanPercent = (emi / incomeTotal) * 100;
-        const projectedTotal = ((otherLoansEmi + emi) / incomeTotal) * 100;
-        let zoneClass = 'text-success';
-        let zoneName = 'Green';
-        if (projectedTotal > yellowLimit) {
-            zoneClass = 'text-danger';
-            zoneName = 'Red';
-        } else if (projectedTotal >= greenLimit) {
-            zoneClass = 'text-warning';
-            zoneName = 'Yellow';
+        if (
+            principal > 0
+            && emi > 0
+            && Number.isFinite(periodMonths)
+            && periodMonths > 0
+            && Number.isFinite(paidMonths)
+            && paidMonths >= 0
+            && paidMonths < periodMonths
+            && remainingMonths > 0
+        ) {
+            const inferredAnnualRate = inferAnnualRatePercent(principal, emi, remainingMonths);
+            if (inferredAnnualRate !== null && inferredAnnualRate <= 100) {
+                const inferredMonthlyRate = inferredAnnualRate / 12;
+                emiPercentInput.value = `${inferredAnnualRate.toFixed(2)}% annual`;
+                emiPercentHint.textContent = `Inferred interest: ${inferredAnnualRate.toFixed(2)}% yearly (${inferredMonthlyRate.toFixed(2)}% monthly).`;
+                emiPercentHint.className = 'form-text text-success';
+                return;
+            }
+            if (inferredAnnualRate !== null && inferredAnnualRate > 100) {
+                emiPercentInput.value = '';
+                emiPercentHint.textContent = 'Inferred interest is above 100%. Please verify principal, EMI, and period.';
+                emiPercentHint.className = 'form-text text-warning';
+                return;
+            }
         }
-        emiPercentHint.textContent = `This loan EMI: ${loanPercent.toFixed(1)}% of income | Projected total EMI ratio: ${projectedTotal.toFixed(1)}% (${zoneName} zone)`;
-        emiPercentHint.className = `form-text ${zoneClass}`;
-        emiPercentInput.value = `${projectedTotal.toFixed(1)}% (${zoneName})`;
+
+        emiPercentInput.value = '';
+        emiPercentHint.textContent = 'Enter annual/monthly interest, or principal + EMI + tenure to view current interest percentage.';
+        emiPercentHint.className = 'form-text text-muted';
     }
 
     function syncDateFields() {
         const start = parseIsoDate(startDateInput.value);
         const period = Number.parseInt(loanPeriodMonths.value, 10);
+        const effectiveStartMin = startDateInput.min || baseStartDateMin;
 
         if (start) {
             const startIso = formatIsoDate(start);
-            if (startDateMin && startIso < startDateMin) {
-                dateCalcHint.textContent = `Start date cannot be before ${startDateMin}.`;
+            if (effectiveStartMin && startIso < effectiveStartMin) {
+                dateCalcHint.textContent = `Start date cannot be before ${effectiveStartMin}.`;
                 dateCalcHint.className = 'text-warning';
                 endDateInput.value = '';
                 updateMonthsPaidAuto();
@@ -264,7 +365,7 @@
         }
 
         endDateInput.value = '';
-        dateCalcHint.textContent = `Start date allowed from ${startDateMin || 'N/A'} to ${startDateMax || 'N/A'}. End date is auto-filled.`;
+        dateCalcHint.textContent = `Start date allowed from ${effectiveStartMin || 'N/A'} to ${startDateMax || 'N/A'}. End date is auto-filled.`;
         dateCalcHint.className = 'text-muted';
         updateMonthsPaidAuto();
     }
@@ -273,10 +374,43 @@
         if (interestMode.value === 'monthly') {
             interestRateLabel.textContent = 'Monthly Interest Rate (%)';
             interestRateHelp.textContent = 'Monthly input is converted to annual rate automatically.';
+            interestRateInput.max = '8.33';
         } else {
-            interestRateLabel.textContent = 'Interest Rate (%)';
+            interestRateLabel.textContent = 'Annual Interest Rate (%)';
             interestRateHelp.textContent = 'Enter annual interest %, or switch to monthly mode.';
+            interestRateInput.max = '100';
         }
+    }
+
+    function canRecalculateAutoEmi() {
+        const principal = Number(principalInput.value);
+        const periodMonths = Number(loanPeriodMonths.value);
+        const paidMonths = Number(monthsPaid.value || 0);
+        const interestRateRaw = interestRateInput.value.trim();
+        const interestRate = Number(interestRateRaw);
+        if (!principal || principal <= 0) {
+            return false;
+        }
+        if (!periodMonths || periodMonths <= 0) {
+            return false;
+        }
+        if (!Number.isFinite(paidMonths) || paidMonths < 0 || paidMonths >= periodMonths) {
+            return false;
+        }
+        if (!interestRateRaw || Number.isNaN(interestRate) || interestRate < 0) {
+            return false;
+        }
+        return true;
+    }
+
+    function refreshProjectedPercent() {
+        const hasEmiValue = monthlyEmiInput.value.trim() !== '';
+        const shouldAutoFillEmi = !hasEmiValue || emiAutoCalculated;
+        if (shouldAutoFillEmi && canRecalculateAutoEmi()) {
+            calculateEmi();
+            return;
+        }
+        updateEmiPercentHint();
     }
 
     function calculateEmi() {
@@ -285,14 +419,6 @@
         const interestRate = Number(interestRateInput.value);
         const periodMonths = Number(loanPeriodMonths.value);
         const paidMonths = Number(monthsPaid.value || 0);
-        const existingEmi = Number(monthlyEmiInput.value || 0);
-
-        if (existingEmi > 0) {
-            updateEmiPercentHint();
-            emiCalcHint.textContent = 'Using your entered EMI amount. EMI percentage has been updated.';
-            emiCalcHint.className = 'text-info';
-            return;
-        }
 
         if (!principal || principal <= 0) {
             emiCalcHint.textContent = 'Enter a valid principal amount first.';
@@ -328,6 +454,7 @@
 
         const roundedEmi = Math.max(1, Math.round(emiValue));
         monthlyEmiInput.value = String(roundedEmi);
+        emiAutoCalculated = true;
         emiCalcHint.textContent = `Auto-calculated EMI: Rs. ${roundedEmi.toLocaleString()} for ${remainingMonths} remaining month(s).`;
         emiCalcHint.className = 'text-success';
         updateEmiPercentHint();
@@ -338,20 +465,39 @@
     syncDateFields();
     updateEmiPercentHint();
     calcEmiBtn.addEventListener('click', calculateEmi);
-    interestMode.addEventListener('change', updateRateCopy);
-    loanPeriodMonths.addEventListener('input', function () { syncDateFields(); updateEmiPercentHint(); });
-    startDateInput.addEventListener('change', function () { syncDateFields(); updateEmiPercentHint(); });
-    monthlyEmiInput.addEventListener('input', updateEmiPercentHint);
+    interestMode.addEventListener('change', function () {
+        updateRateCopy();
+        refreshProjectedPercent();
+    });
+    interestRateInput.addEventListener('input', refreshProjectedPercent);
+    principalInput.addEventListener('input', refreshProjectedPercent);
+    loanPeriodMonths.addEventListener('input', function () {
+        syncDateFields();
+        refreshProjectedPercent();
+    });
+    startDateInput.addEventListener('change', function () {
+        startDateInput.dataset.autoFromPaid = '0';
+        syncDateFields();
+        refreshProjectedPercent();
+    });
+    monthlyEmiInput.addEventListener('input', function () {
+        emiAutoCalculated = false;
+        refreshProjectedPercent();
+    });
     monthsPaid.addEventListener('input', function () {
         const hasValue = monthsPaid.value.trim() !== '';
         monthsPaidManual = hasValue;
         if (!hasValue) {
             monthsPaidManual = false;
+            startDateInput.dataset.autoFromPaid = '0';
             updateMonthsPaidAuto();
+            syncDateFields();
         } else {
-            monthsPaidHint.textContent = 'Using manual value.';
-            monthsPaidHint.className = 'form-text text-info';
+            startDateInput.dataset.autoFromPaid = '1';
+            updateMonthsPaidAuto();
+            syncDateFields();
         }
+        refreshProjectedPercent();
     });
 })();
 </script>

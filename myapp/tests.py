@@ -4,6 +4,7 @@ from unittest.mock import patch
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from .models import (
     Budget,
@@ -15,7 +16,7 @@ from .models import (
     SystemSetting,
     UserProfile,
 )
-from .views import _build_chart_payload, _financial_snapshot
+from .views import _build_chart_payload, _financial_snapshot, _shift_date_by_months
 
 
 class AuthFlowTests(TestCase):
@@ -92,6 +93,7 @@ class IncomeLoanFlowTests(TestCase):
         loan = Loan.objects.get(user=self.user)
         self.assertEqual(loan.loan_type, 'Personal Loan')
         self.assertEqual(loan.lender, 'Axis Bank')
+        self.assertEqual(float(loan.interest_rate), 15.5)
 
         edit_loan_response = self.client.post(
             reverse('edit_loan', args=[loan.id]),
@@ -110,10 +112,56 @@ class IncomeLoanFlowTests(TestCase):
         self.assertEqual(loan.loan_type, 'Personal Loan Updated')
         self.assertEqual(loan.lender, 'HDFC Bank')
         self.assertEqual(loan.monthly_emi, 6800)
+        self.assertEqual(float(loan.interest_rate), 14.2)
 
         delete_loan_response = self.client.post(reverse('delete_loan', args=[loan.id]))
         self.assertEqual(delete_loan_response.status_code, 302)
         self.assertFalse(Loan.objects.filter(id=loan.id).exists())
+
+    def test_add_loan_auto_sets_start_date_from_paid_months(self):
+        response = self.client.post(
+            reverse('add_loan'),
+            {
+                'loan_type': 'Home Loan',
+                'lender': 'SBI',
+                'principal': '3500000',
+                'monthly_emi': '42000',
+                'interest_rate_mode': 'annual',
+                'interest_rate': '8.5',
+                'loan_period_months': '240',
+                'months_paid': '50',
+                'start_date': '',
+                'end_date': '',
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        loan = Loan.objects.get(user=self.user)
+        expected_start = _shift_date_by_months(timezone.localdate(), -50)
+        expected_end = _shift_date_by_months(expected_start, 239)
+        self.assertEqual(loan.start_date, expected_start)
+        self.assertEqual(loan.end_date, expected_end)
+        self.assertEqual(float(loan.interest_rate), 8.5)
+
+    def test_add_loan_rejects_start_date_before_paid_month_window(self):
+        too_old_start = _shift_date_by_months(timezone.localdate(), -55)
+        response = self.client.post(
+            reverse('add_loan'),
+            {
+                'loan_type': 'Home Loan',
+                'lender': 'SBI',
+                'principal': '3500000',
+                'monthly_emi': '42000',
+                'interest_rate_mode': 'annual',
+                'interest_rate': '8.5',
+                'loan_period_months': '240',
+                'months_paid': '50',
+                'start_date': too_old_start.isoformat(),
+                'end_date': '',
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Start date must be between')
+        self.assertFalse(Loan.objects.filter(user=self.user).exists())
 
 
 class DashboardBudgetSuggestionTests(TestCase):
