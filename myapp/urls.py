@@ -3,8 +3,6 @@ from . import views
 
 
 urlpatterns = [
-    # Temporary migration URL
-    path("run-migrate/", run_migrate),
 
     path('', views.dashboard, name='dashboard'),
     path('register/', views.register_view, name='register'),
