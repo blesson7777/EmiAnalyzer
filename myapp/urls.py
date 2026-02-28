@@ -1,12 +1,6 @@
 from django.urls import path
-from django.core.management import call_command
-from django.http import HttpResponse
 from . import views
 
-# Temporary migration function
-def run_migrate(request):
-    call_command('migrate')
-    return HttpResponse("MIGRATIONS DONE")
 
 urlpatterns = [
     # Temporary migration URL
