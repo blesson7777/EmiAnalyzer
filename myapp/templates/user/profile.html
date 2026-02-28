@@ -1,0 +1,31 @@
+{% extends 'user/layout.html' %}
+{% block title %}Profile | EMI Analyzer{% endblock %}
+{% block content %}
+<div class="mf-page-head"><div><h4 class="mb-1">Profile Overview</h4><p class="mb-0">Account summary and financial snapshot.</p></div></div>
+<div class="row g-4">
+<div class="col-lg-4"><div class="card mf-panel-card h-100"><div class="card-body">
+{% if profile_photo_url %}
+<img src="{{ profile_photo_url }}" alt="Profile Photo" class="mf-profile-photo-lg mb-3">
+{% else %}
+<div class="mf-avatar-lg mb-3">{{ user.username|first|upper }}</div>
+{% endif %}
+<h6 class="mb-3">Account</h6>
+<p class="mb-1"><strong>Username:</strong> {{ user.username }}</p>
+<p class="mb-1"><strong>Email:</strong> {{ user.email|default:'Not set' }}</p>
+<p class="mb-1"><strong>Phone:</strong> {{ phone_number }}</p>
+<p class="mb-3"><strong>Member Since:</strong> {{ member_since|date:'d M Y' }}</p>
+<a href="{% url 'settings' %}" class="btn btn-primary w-100 mb-2">Open Settings</a>
+<a href="{% url 'lock_screen' %}" class="btn btn-outline-secondary w-100">Lock Screen</a>
+</div></div></div>
+<div class="col-lg-8"><div class="row g-4">
+<div class="col-md-6"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Total Monthly Income</p><h5 class="mb-0">Rs. {{ total_income|floatformat:0 }}</h5></div></div></div>
+<div class="col-md-6"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Loan EMI (Monthly)</p><h5 class="mb-0">Rs. {{ total_emi|floatformat:0 }}</h5></div></div></div>
+<div class="col-md-6"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Card Due (Monthly)</p><h5 class="mb-0">Rs. {{ credit_card_due_estimate|floatformat:0 }}</h5></div></div></div>
+<div class="col-md-6"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Total Obligations</p><h5 class="mb-0">Rs. {{ total_monthly_obligation|floatformat:0 }}</h5></div></div></div>
+<div class="col-md-6"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Active Loans</p><h5 class="mb-0">{{ loan_count }}</h5></div></div></div>
+<div class="col-md-6"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">High Interest Loans</p><h5 class="mb-0">{{ high_interest_count }}</h5></div></div></div>
+</div>
+<div class="card mf-panel-card mt-4"><div class="card-body"><h6 class="mb-2">Current Health Zone</h6><p class="mb-1"><strong>{{ health_zone }}</strong> (Loan EMI: {{ emi_ratio|floatformat:1 }}% | Overall: {{ overall_burden_ratio|floatformat:1 }}%)</p><p class="text-muted mb-0">{{ smart_suggestion }}</p></div></div>
+</div>
+</div>
+{% endblock %}

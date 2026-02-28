@@ -1,0 +1,29 @@
+{% extends 'user/layout.html' %}
+{% load static %}
+{% block title %}Register | EMI Analyzer{% endblock %}
+{% block content %}
+<div class="row justify-content-center align-items-center min-vh-100 py-4">
+    <div class="col-md-8 col-lg-6">
+        <div class="card mf-auth-card animate-on-scroll">
+            <div class="card-body p-4 p-lg-5">
+                <div class="d-flex justify-content-between align-items-start mb-4">
+                    <div><h3 class="mb-1">Register</h3><p class="text-muted mb-0">Create your EMI Analyzer account.</p></div>
+                    <img src="{% static 'images/logo-dark.svg' %}?v=20260301" alt="Logo" class="mf-auth-logo">
+                </div>
+                <form method="post" enctype="multipart/form-data">{% csrf_token %}
+                    <div class="row g-3">
+                        <div class="col-md-6"><label class="form-label">Username</label><input type="text" class="form-control" name="username" minlength="3" maxlength="30" pattern="[A-Za-z0-9_.@+\-]{3,30}" required></div>
+                        <div class="col-md-6"><label class="form-label">Email</label><input type="email" class="form-control" name="email" required></div>
+                        <div class="col-md-6"><label class="form-label">Phone Number</label><input type="text" class="form-control" name="phone_number" minlength="10" maxlength="15" pattern="[0-9]{10,15}" required></div>
+                        <div class="col-md-6"><label class="form-label">Password</label><input type="password" class="form-control" name="password" minlength="8" required></div>
+                        <div class="col-md-6"><label class="form-label">Confirm Password</label><input type="password" class="form-control" name="confirm_password" minlength="8" required></div>
+                        <div class="col-12"><label class="form-label">Profile Photo (Optional)</label><input type="file" class="form-control" name="profile_photo" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"></div>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 mt-4">Create Account</button>
+                </form>
+                <p class="small text-center mt-3 mb-0">Already have an account? <a href="{% url 'login' %}">Login</a></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

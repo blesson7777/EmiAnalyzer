@@ -1,0 +1,63 @@
+{% extends 'user/layout.html' %}
+{% load static %}
+{% block title %}Dashboard | EMI Analyzer{% endblock %}
+{% block content %}
+<div class="mf-page-head animate-on-scroll"><div><h4 class="mb-1">Financial Dashboard</h4><p class="mb-0">Track EMI burden, savings, and debt trajectory.</p></div><a href="{% url 'add_loan' %}" class="btn btn-primary mf-btn-pill"><i class="bi bi-plus-circle me-1"></i>Add Loan</a></div>
+<div class="row g-4 mb-4">
+    <div class="col-md-3"><div class="card mf-report-card mf-report-warning h-100"><div class="card-body"><h3 class="mf-report-value" data-count="{{ total_income|default:0 }}">Rs. {{ total_income|floatformat:0 }}</h3><p class="mf-report-label mb-0">Total Monthly Income</p></div></div></div>
+    <div class="col-md-3"><div class="card mf-report-card mf-report-danger h-100"><div class="card-body"><h3 class="mf-report-value text-danger" data-count="{{ total_emi|default:0 }}">Rs. {{ total_emi|floatformat:0 }}</h3><p class="mf-report-label mb-1">Loan EMI (Monthly)</p><p class="mb-0 small text-muted">Card Spend ({{ credit_card_current_month_label }}): <span class="text-danger fw-semibold">Rs. {{ credit_card_total_spend_display|default:'0' }}</span></p></div></div></div>
+    <div class="col-md-3"><div class="card mf-report-card mf-report-success h-100"><div class="card-body"><h3 class="mf-report-value" data-count="{{ savings_target|default:0 }}">Rs. {{ savings_target|floatformat:0 }}</h3><p class="mf-report-label mb-0">Savings Target</p></div></div></div>
+    <div class="col-md-3"><div class="card mf-report-card mf-report-primary h-100"><div class="card-body"><h3 class="mf-report-value">{{ overall_burden_ratio|floatformat:1 }}%</h3><p class="mf-report-label mb-0">Overall Debt Burden</p></div></div></div>
+</div>
+<div class="row g-4">
+    <div class="col-xl-8">
+        <div class="card mf-gradient-card animate-on-scroll"><div class="card-body">
+            <div class="row align-items-center g-4">
+                <div class="col-lg-4 text-center"><div class="progress-circle {{ overall_health_class }} mx-auto" style="--ratio: {{ overall_burden_progress|default:0 }};"><span>{{ overall_burden_ratio|floatformat:1 }}%</span></div></div>
+                <div class="col-lg-8">
+                    <h5 class="mb-2">Smart AI Suggestion (Loans + Cards)</h5>
+                    <p class="mb-2">{{ overall_suggestion }}</p>
+                    <ul class="mb-2 ps-3">
+                        <li>Loan EMI ratio: {{ emi_ratio|floatformat:1 }}% ({{ health_zone }})</li>
+                        <li>{{ priority_suggestion }}</li>
+                        <li>{{ repayment_strategy }}</li>
+                        <li>{{ credit_card_alert }}</li>
+                    </ul>
+                    <p class="small mb-0">Green &lt; 30% | Yellow 30-50% | Red &gt; 50%</p>
+                </div>
+            </div>
+        </div></div>
+        <div class="row g-4 mt-1">
+            <div class="col-md-6"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Debt-Free Estimate</p><h6 class="mb-0">{{ debt_free_text }}</h6></div></div></div>
+            <div class="col-md-6"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Net Savings After Cards</p><h6 class="mb-0">Rs. {{ net_savings_after_cards|floatformat:0 }}</h6></div></div></div>
+        </div>
+        <div class="row g-4 mt-1">
+            <div class="col-md-6"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Credit Card Limit Status</p><h6 class="mb-1">Used Rs. {{ credit_card_total_outstanding|floatformat:0 }} / {{ credit_card_total_limit|floatformat:0 }}</h6><p class="mb-0 small text-muted">Active EMI balance: Rs. {{ credit_card_total_emi_remaining_balance|floatformat:0 }} | Available: Rs. {{ credit_card_available_limit|floatformat:0 }} | Utilization: {{ credit_card_utilization_ratio|floatformat:1 }}%</p></div></div></div>
+            <div class="col-md-6"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Card Net Cost (Monthly)</p><h6 class="mb-1">Rs. {{ credit_card_monthly_net_cost|floatformat:2 }}</h6><p class="mb-1 small text-muted">Interest: Rs. {{ credit_card_monthly_interest|floatformat:2 }} | Rewards: Rs. {{ credit_card_monthly_rewards|floatformat:2 }}</p><a href="{% url 'credit_cards' %}" class="small">Manage credit cards</a></div></div></div>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="card mf-panel-card"><div class="card-body">
+            <h6 class="mb-3">Financial Signals</h6>
+            <div class="mf-progress-row"><div class="d-flex justify-content-between"><span>Loan EMI Load</span><span>{{ emi_ratio|floatformat:1 }}%</span></div><div class="progress"><div class="progress-bar bg-primary" style="width: {{ emi_progress|default:0 }}%"></div></div></div>
+            <div class="mf-progress-row"><div class="d-flex justify-content-between"><span>Card Utilization</span><span>{{ credit_card_utilization_ratio|floatformat:1 }}%</span></div><div class="progress"><div class="progress-bar bg-warning" style="width: {{ credit_card_utilization_progress|default:0 }}%"></div></div></div>
+            <div class="mf-progress-row"><div class="d-flex justify-content-between"><span>Savings Target Hit</span><span>{{ savings_progress_after_cards|floatformat:0 }}%</span></div><div class="progress"><div class="progress-bar bg-success" style="width: {{ savings_progress_after_cards|default:0 }}%"></div></div></div>
+            <div class="alert alert-info mt-3 mb-0">Current monthly card obligation: Rs. {{ credit_card_due_estimate|floatformat:0 }} (EMI + {{ credit_card_current_month_label }} spend)</div>
+            {% if high_interest_loans %}<div class="alert alert-warning mt-3 mb-0">{{ refinancing_suggestion }}</div>{% else %}<div class="alert alert-success mt-3 mb-0">{{ refinancing_suggestion }}</div>{% endif %}
+        </div></div>
+    </div>
+</div>
+<div class="row g-4 mt-1">
+    <div class="col-lg-4"><div class="card mf-chart-card h-100"><div class="card-body"><h6 class="mb-2 mf-chart-head">Debt Mix (Loans + Cards)</h6><canvas id="emiPieChart" height="220"></canvas></div></div></div>
+    <div class="col-lg-4"><div class="card mf-chart-card h-100"><div class="card-body"><h6 class="mb-2 mf-chart-head">Monthly Cashflow (Card-Aware)</h6><canvas id="cashflowBarChart" height="220"></canvas></div></div></div>
+    <div class="col-lg-4"><div class="card mf-chart-card h-100"><div class="card-body"><h6 class="mb-2 mf-chart-head">Loan Timeline</h6><canvas id="loanTimelineChart" height="220"></canvas></div></div></div>
+</div>
+{{ chart_payload|json_script:'chartPayload' }}
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{% static 'js/charts.js' %}?v=20260303"></script>
+<script>
+const p=document.getElementById('chartPayload'); if(p){ renderFinancialCharts(JSON.parse(p.textContent)); }
+</script>
+{% endblock %}

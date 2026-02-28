@@ -1,0 +1,12 @@
+<svg width="170" height="36" viewBox="0 0 170 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="emiG1" x1="5" y1="4" x2="31" y2="32" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3B82F6"/>
+      <stop offset="1" stop-color="#8B5CF6"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="32" height="32" rx="9" fill="url(#emiG1)"/>
+  <path d="M10 24L14.2 14.8L18.8 21L23.1 10L27 24" stroke="#F8FAFC" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="23.1" cy="10" r="1.8" fill="#FACC15"/>
+  <text x="42" y="22.7" fill="#F8FAFC" font-size="14" font-family="Public Sans, Arial, sans-serif" font-weight="700" letter-spacing="0.2">EMI Analyzer</text>
+</svg>

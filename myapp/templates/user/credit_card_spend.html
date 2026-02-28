@@ -1,0 +1,212 @@
+{% extends 'user/layout.html' %}
+{% block title %}Card Entries | EMI Analyzer{% endblock %}
+{% block content %}
+<div class="mf-page-head">
+    <div>
+        <h4 class="mb-1">{{ selected_card.card_name }} Card Entries</h4>
+        <p class="mb-0">Monthly spend is tracked only for {{ current_month_label }}. EMI entries continue by tenure.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'credit_card_edit' selected_card.id %}" class="btn btn-outline-primary btn-sm">Edit Card</a>
+        <a href="{% url 'credit_cards' %}" class="btn btn-outline-secondary btn-sm">Back to Cards</a>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-3"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Current Month Spend</p><h5 class="mb-0">Rs. {{ selected_card_row.monthly_spend_amount|default:0|floatformat:0 }}</h5></div></div></div>
+    <div class="col-md-3"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Active Card EMI / Month</p><h5 class="mb-0">Rs. {{ selected_card_row.emi_monthly_due|default:0|floatformat:0 }}</h5></div></div></div>
+    <div class="col-md-3"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">EMI Remaining Balance</p><h5 class="mb-0">Rs. {{ selected_card_row.emi_remaining_balance|default:0|floatformat:0 }}</h5></div></div></div>
+    <div class="col-md-3"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Utilization</p><h5 class="mb-0">{{ selected_card_row.utilization_percent|default:0|floatformat:1 }}%</h5></div></div></div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-4">
+        <div class="card mf-panel-card mb-4">
+            <div class="card-body p-3 p-lg-4">
+                <h6 class="mb-3">Cards</h6>
+                {% if card_rows %}
+                <div class="mf-cc-stack">
+                    {% for row in card_rows %}
+                    <a href="{% url 'credit_card_spend' row.card.id %}" class="mf-cc-tile {% if row.card.id == selected_card.id %}active{% endif %}">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="mf-cc-title">{{ row.card.card_name }}</div>
+                                <div class="mf-cc-subtitle">{% if row.card.issuer %}{{ row.card.issuer }}{% else %}No issuer{% endif %}</div>
+                            </div>
+                        </div>
+                        <div class="row g-2 mt-2">
+                            <div class="col-6">
+                                <span class="mf-cc-label">Spend ({{ current_month_label }})</span>
+                                <strong class="d-block">Rs. {{ row.monthly_spend_amount|floatformat:0 }}</strong>
+                            </div>
+                            <div class="col-6">
+                                <span class="mf-cc-label">Active EMI / Mo</span>
+                                <strong class="d-block">Rs. {{ row.emi_monthly_due|floatformat:0 }}</strong>
+                            </div>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-8">
+        <div class="card mf-form-card mb-4">
+            <div class="card-body p-4">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                    <h6 class="mb-0">{% if is_entry_edit %}Edit Card Entry{% else %}Add Card Entry{% endif %}</h6>
+                    {% if is_entry_edit %}
+                    <a href="{% url 'credit_card_spend' selected_card.id %}" class="btn btn-sm btn-outline-secondary">Cancel Edit</a>
+                    {% endif %}
+                </div>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="save_entry">
+                    <input type="hidden" name="entry_id" value="{{ entry_form.entry_id }}">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Entry Type</label>
+                            <select class="form-select" name="entry_type" id="entryTypeInput" required>
+                                <option value="monthly" {% if entry_form.entry_type == 'monthly' %}selected{% endif %}>Monthly Spend</option>
+                                <option value="emi" {% if entry_form.entry_type == 'emi' %}selected{% endif %}>EMI</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Month</label>
+                            <input type="month" class="form-control" name="entry_month" value="{{ entry_form.entry_month }}" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Amount</label>
+                            <input type="number" class="form-control" name="amount" min="1" value="{{ entry_form.amount }}" required>
+                        </div>
+                        <div class="col-md-4" id="tenureWrap">
+                            <label class="form-label">EMI Tenure (Months)</label>
+                            <input type="number" class="form-control" name="tenure_months" id="tenureInput" min="1" max="240" value="{{ entry_form.tenure_months }}">
+                            <small class="text-muted">Required only for EMI entries.</small>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">Card</label>
+                            <input type="text" class="form-control" value="{{ selected_card.card_name }}" readonly>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Description</label>
+                            <input type="text" class="form-control" name="description" maxlength="200" value="{{ entry_form.description }}" placeholder="Optional note">
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <button type="submit" class="btn btn-primary">{% if is_entry_edit %}Update Entry{% else %}Save Entry{% endif %}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mf-table-card mb-4">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table mf-data-table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Month</th>
+                                <th>Amount</th>
+                                <th>EMI / Month</th>
+                                <th>Remaining</th>
+                                <th>Status</th>
+                                <th>Description</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in entries %}
+                            <tr>
+                                <td>{{ row.entry_type_label }}</td>
+                                <td>{{ row.entry.entry_month|date:'M Y' }}</td>
+                                <td>Rs. {{ row.entry.amount|floatformat:0 }}</td>
+                                <td>Rs. {{ row.monthly_due|floatformat:0 }}</td>
+                                <td>Rs. {{ row.remaining_balance|floatformat:0 }}</td>
+                                <td>{{ row.status }}</td>
+                                <td>{{ row.entry.description|default:'-' }}</td>
+                                <td class="text-end">
+                                    <a href="{% url 'credit_card_spend' selected_card.id %}?edit_entry={{ row.entry.id }}" class="btn btn-sm btn-outline-primary me-1">Edit</a>
+                                    <form method="post" class="d-inline" onsubmit="return confirm('Delete this entry?');">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="delete_entry">
+                                        <input type="hidden" name="entry_id" value="{{ row.entry.id }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="8" class="text-center py-4">No card entries for this card yet.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mf-table-card">
+            <div class="card-body p-0">
+                <div class="px-3 pt-3">
+                    <h6 class="mb-0">All Card Entries</h6>
+                </div>
+                <div class="table-responsive">
+                    <table class="table mf-data-table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Card</th>
+                                <th>Type</th>
+                                <th>Month</th>
+                                <th>Amount</th>
+                                <th>EMI / Month</th>
+                                <th>Remaining</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in all_entries %}
+                            <tr>
+                                <td>{{ row.entry.card.card_name }}</td>
+                                <td>{{ row.entry_type_label }}</td>
+                                <td>{{ row.entry.entry_month|date:'M Y' }}</td>
+                                <td>Rs. {{ row.entry.amount|floatformat:0 }}</td>
+                                <td>Rs. {{ row.monthly_due|floatformat:0 }}</td>
+                                <td>Rs. {{ row.remaining_balance|floatformat:0 }}</td>
+                                <td>{{ row.status }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="7" class="text-center py-4">No entries available.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+{{ block.super }}
+<script>
+(() => {
+    const typeInput = document.getElementById('entryTypeInput');
+    const tenureWrap = document.getElementById('tenureWrap');
+    const tenureInput = document.getElementById('tenureInput');
+    if (!typeInput || !tenureWrap || !tenureInput) return;
+
+    const syncTenureState = () => {
+        const isEmi = typeInput.value === 'emi';
+        tenureWrap.style.display = isEmi ? '' : 'none';
+        tenureInput.required = isEmi;
+        if (!isEmi) {
+            tenureInput.value = '';
+        }
+    };
+
+    typeInput.addEventListener('change', syncTenureState);
+    syncTenureState();
+})();
+</script>
+{% endblock %}

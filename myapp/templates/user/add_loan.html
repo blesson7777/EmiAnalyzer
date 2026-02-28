@@ -1,0 +1,358 @@
+{% extends 'user/layout.html' %}
+{% block title %}{% if is_edit %}Edit Loan{% else %}Add Loan{% endif %} | EMI Analyzer{% endblock %}
+{% block content %}
+<div class="mf-page-head">
+    <div>
+        <h4 class="mb-1">{% if is_edit %}Edit Loan{% else %}Loan Manager{% endif %}</h4>
+        <p class="mb-0">{% if is_edit %}Update your existing loan details.{% else %}Add a new loan entry.{% endif %}</p>
+    </div>
+</div>
+<div class="card mf-form-card"><div class="card-body p-4">
+    <form method="post" id="loanForm">{% csrf_token %}
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Loan Type</label>
+                <select class="form-select" name="loan_type" required>
+                    <option value="">Select loan type</option>
+                    <option value="Home Loan" {% if form_values.loan_type == 'Home Loan' %}selected{% endif %}>Home Loan</option>
+                    <option value="Personal Loan" {% if form_values.loan_type == 'Personal Loan' %}selected{% endif %}>Personal Loan</option>
+                    <option value="Car Loan" {% if form_values.loan_type == 'Car Loan' %}selected{% endif %}>Car Loan</option>
+                    <option value="Bike Loan" {% if form_values.loan_type == 'Bike Loan' %}selected{% endif %}>Bike Loan</option>
+                    <option value="Credit Card" {% if form_values.loan_type == 'Credit Card' %}selected{% endif %}>Credit Card</option>
+                    <option value="BNPL" {% if form_values.loan_type == 'BNPL' %}selected{% endif %}>BNPL</option>
+                    <option value="Education Loan" {% if form_values.loan_type == 'Education Loan' %}selected{% endif %}>Education Loan</option>
+                    <option value="Gold Loan" {% if form_values.loan_type == 'Gold Loan' %}selected{% endif %}>Gold Loan</option>
+                    <option value="Business Loan" {% if form_values.loan_type == 'Business Loan' %}selected{% endif %}>Business Loan</option>
+                    <option value="Other" {% if form_values.loan_type == 'Other' %}selected{% endif %}>Other</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Lender / Bank</label>
+                <input type="text" class="form-control" name="lender" maxlength="120" value="{{ form_values.lender }}" placeholder="e.g., HDFC Bank">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Total Principal (Outstanding if mid-loan)</label>
+                <input type="number" class="form-control" id="principalInput" name="principal" min="1" value="{{ form_values.principal }}" required>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Interest Input Type</label>
+                <select class="form-select" id="interestMode" name="interest_rate_mode">
+                    <option value="annual" {% if form_values.interest_rate_mode != 'monthly' %}selected{% endif %}>Annual %</option>
+                    <option value="monthly" {% if form_values.interest_rate_mode == 'monthly' %}selected{% endif %}>Monthly %</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Monthly EMI Amount</label>
+                <input type="number" class="form-control" id="monthlyEmiInput" name="monthly_emi" min="1" value="{{ form_values.monthly_emi }}" placeholder="Leave blank to auto-calculate EMI">
+                <small class="form-text text-muted" id="emiPercentHint">Enter EMI to see EMI percentage impact.</small>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" id="interestRateLabel">Interest Rate (%)</label>
+                <input type="number" class="form-control" id="interestRateInput" name="interest_rate" min="0" max="100" step="0.01" value="{{ form_values.interest_rate }}" placeholder="Leave blank to auto-calc from EMI">
+                <small class="form-text text-muted" id="interestRateHelp">Enter annual interest %, or switch to monthly mode.</small>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Loan Period (Months)</label>
+                <input type="number" class="form-control" id="loanPeriodMonths" name="loan_period_months" min="1" max="600" value="{{ form_values.loan_period_months }}" required>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">EMIs Already Paid (If Mid-Loan)</label>
+                <input type="number" class="form-control" id="monthsPaid" name="months_paid" min="0" max="600" value="{{ form_values.months_paid }}">
+                <small class="form-text text-muted" id="monthsPaidHint">Auto-calculated from start date and current date unless you edit manually.</small>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Start Date</label>
+                <input type="date" class="form-control" id="startDateInput" name="start_date" min="{{ start_date_min }}" max="{{ start_date_max }}" value="{{ form_values.start_date }}" required>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">End Date</label>
+                <input type="date" class="form-control" id="endDateInput" name="end_date" value="{{ form_values.end_date }}" readonly>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Projected EMI Ratio (%)</label>
+                <input type="text" class="form-control" id="emiPercentInput" value="" readonly>
+            </div>
+            <div class="col-12">
+                <small class="text-muted" id="dateCalcHint">Start date allowed from {{ start_date_min }} to {{ start_date_max }}. End date is auto-filled.</small>
+            </div>
+            <div class="col-12 d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-outline-primary btn-sm" id="calcEmiBtn"><i class="bi bi-calculator me-1"></i>Auto Calculate EMI</button>
+                <small class="text-muted" id="emiCalcHint">Set principal, interest, period, and paid EMIs to auto-calculate.</small>
+            </div>
+        </div>
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-primary">{% if is_edit %}Update Loan{% else %}Save Loan{% endif %}</button>
+            <a href="{% url 'loan_list' %}" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+    </form>
+</div></div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+    const principalInput = document.getElementById('principalInput');
+    const interestMode = document.getElementById('interestMode');
+    const interestRateInput = document.getElementById('interestRateInput');
+    const interestRateLabel = document.getElementById('interestRateLabel');
+    const interestRateHelp = document.getElementById('interestRateHelp');
+    const monthlyEmiInput = document.getElementById('monthlyEmiInput');
+    const loanPeriodMonths = document.getElementById('loanPeriodMonths');
+    const monthsPaid = document.getElementById('monthsPaid');
+    const monthsPaidHint = document.getElementById('monthsPaidHint');
+    const startDateInput = document.getElementById('startDateInput');
+    const endDateInput = document.getElementById('endDateInput');
+    const dateCalcHint = document.getElementById('dateCalcHint');
+    const calcEmiBtn = document.getElementById('calcEmiBtn');
+    const emiCalcHint = document.getElementById('emiCalcHint');
+    const emiPercentHint = document.getElementById('emiPercentHint');
+    const emiPercentInput = document.getElementById('emiPercentInput');
+
+    const incomeTotal = Number('{{ income_total|default:0 }}');
+    const otherLoansEmi = Number('{{ other_loans_emi|default:0 }}');
+    const greenLimit = Number('{{ green_limit|default:30 }}');
+    const yellowLimit = Number('{{ yellow_limit|default:50 }}');
+    const startDateMin = '{{ start_date_min|default:"" }}';
+    const startDateMax = '{{ start_date_max|default:"" }}';
+    let monthsPaidManual = false;
+
+    function parseIsoDate(value) {
+        if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+            return null;
+        }
+        const parts = value.split('-').map((part) => Number(part));
+        const d = new Date(parts[0], parts[1] - 1, parts[2]);
+        if (
+            Number.isNaN(d.getTime()) ||
+            d.getFullYear() !== parts[0] ||
+            d.getMonth() !== parts[1] - 1 ||
+            d.getDate() !== parts[2]
+        ) {
+            return null;
+        }
+        return d;
+    }
+
+    function formatIsoDate(dateObj) {
+        const y = dateObj.getFullYear();
+        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const d = String(dateObj.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
+    function addMonthsClamped(baseDate, months) {
+        const monthBase = new Date(baseDate.getFullYear(), baseDate.getMonth() + months, 1);
+        const lastDay = new Date(monthBase.getFullYear(), monthBase.getMonth() + 1, 0).getDate();
+        const targetDay = Math.min(baseDate.getDate(), lastDay);
+        return new Date(monthBase.getFullYear(), monthBase.getMonth(), targetDay);
+    }
+
+    function applyDateBoundsAndDefaults() {
+        if (!startDateMin || !startDateMax) {
+            const today = new Date();
+            const maxDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            const minDate = addMonthsClamped(maxDate, -2);
+            if (!startDateMin) {
+                startDateInput.min = formatIsoDate(minDate);
+            }
+            if (!startDateMax) {
+                startDateInput.max = formatIsoDate(maxDate);
+            }
+        }
+        if (!startDateInput.value && startDateInput.max) {
+            startDateInput.value = startDateInput.max;
+        }
+    }
+
+    function elapsedMonthsFromCurrentDate(start) {
+        const today = new Date();
+        const current = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        if (current <= start) {
+            return 0;
+        }
+        let months = (current.getFullYear() - start.getFullYear()) * 12 + (current.getMonth() - start.getMonth());
+        if (current.getDate() < start.getDate()) {
+            months -= 1;
+        }
+        return Math.max(0, months);
+    }
+
+    function updateMonthsPaidAuto() {
+        if (monthsPaidManual) {
+            monthsPaidHint.textContent = 'Using manual value.';
+            monthsPaidHint.className = 'form-text text-info';
+            return;
+        }
+        const start = parseIsoDate(startDateInput.value);
+        const period = Number.parseInt(loanPeriodMonths.value, 10);
+        if (!start) {
+            monthsPaidHint.textContent = 'Set start date to auto-calculate paid EMIs.';
+            monthsPaidHint.className = 'form-text text-muted';
+            return;
+        }
+
+        let autoPaid = elapsedMonthsFromCurrentDate(start);
+        if (Number.isFinite(period) && period > 0) {
+            autoPaid = Math.min(autoPaid, Math.max(0, period - 1));
+        }
+        monthsPaid.value = String(autoPaid);
+        monthsPaidHint.textContent = `Auto-set to ${autoPaid} based on current date.`;
+        monthsPaidHint.className = 'form-text text-success';
+    }
+
+    function updateEmiPercentHint() {
+        const emi = Number(monthlyEmiInput.value);
+        if (!emi || emi <= 0) {
+            emiPercentHint.textContent = 'Enter EMI to see EMI percentage impact.';
+            emiPercentHint.className = 'form-text text-muted';
+            emiPercentInput.value = '';
+            return;
+        }
+        if (!incomeTotal || incomeTotal <= 0) {
+            emiPercentHint.textContent = 'Add income details to view EMI percentage.';
+            emiPercentHint.className = 'form-text text-warning';
+            emiPercentInput.value = '';
+            return;
+        }
+
+        const loanPercent = (emi / incomeTotal) * 100;
+        const projectedTotal = ((otherLoansEmi + emi) / incomeTotal) * 100;
+        let zoneClass = 'text-success';
+        let zoneName = 'Green';
+        if (projectedTotal > yellowLimit) {
+            zoneClass = 'text-danger';
+            zoneName = 'Red';
+        } else if (projectedTotal >= greenLimit) {
+            zoneClass = 'text-warning';
+            zoneName = 'Yellow';
+        }
+        emiPercentHint.textContent = `This loan EMI: ${loanPercent.toFixed(1)}% of income | Projected total EMI ratio: ${projectedTotal.toFixed(1)}% (${zoneName} zone)`;
+        emiPercentHint.className = `form-text ${zoneClass}`;
+        emiPercentInput.value = `${projectedTotal.toFixed(1)}% (${zoneName})`;
+    }
+
+    function syncDateFields() {
+        const start = parseIsoDate(startDateInput.value);
+        const period = Number.parseInt(loanPeriodMonths.value, 10);
+
+        if (start) {
+            const startIso = formatIsoDate(start);
+            if (startDateMin && startIso < startDateMin) {
+                dateCalcHint.textContent = `Start date cannot be before ${startDateMin}.`;
+                dateCalcHint.className = 'text-warning';
+                endDateInput.value = '';
+                updateMonthsPaidAuto();
+                return;
+            }
+            if (startDateMax && startIso > startDateMax) {
+                dateCalcHint.textContent = `Start date cannot be after ${startDateMax}.`;
+                dateCalcHint.className = 'text-warning';
+                endDateInput.value = '';
+                updateMonthsPaidAuto();
+                return;
+            }
+        }
+
+        if (Number.isFinite(period) && period > 0) {
+            if (start) {
+                const derivedEnd = addMonthsClamped(start, period - 1);
+                endDateInput.value = formatIsoDate(derivedEnd);
+                dateCalcHint.textContent = `End date auto-set from start date + ${period} month(s).`;
+                dateCalcHint.className = 'text-success';
+                updateMonthsPaidAuto();
+                return;
+            }
+        }
+
+        endDateInput.value = '';
+        dateCalcHint.textContent = `Start date allowed from ${startDateMin || 'N/A'} to ${startDateMax || 'N/A'}. End date is auto-filled.`;
+        dateCalcHint.className = 'text-muted';
+        updateMonthsPaidAuto();
+    }
+
+    function updateRateCopy() {
+        if (interestMode.value === 'monthly') {
+            interestRateLabel.textContent = 'Monthly Interest Rate (%)';
+            interestRateHelp.textContent = 'Monthly input is converted to annual rate automatically.';
+        } else {
+            interestRateLabel.textContent = 'Interest Rate (%)';
+            interestRateHelp.textContent = 'Enter annual interest %, or switch to monthly mode.';
+        }
+    }
+
+    function calculateEmi() {
+        syncDateFields();
+        const principal = Number(principalInput.value);
+        const interestRate = Number(interestRateInput.value);
+        const periodMonths = Number(loanPeriodMonths.value);
+        const paidMonths = Number(monthsPaid.value || 0);
+        const existingEmi = Number(monthlyEmiInput.value || 0);
+
+        if (existingEmi > 0) {
+            updateEmiPercentHint();
+            emiCalcHint.textContent = 'Using your entered EMI amount. EMI percentage has been updated.';
+            emiCalcHint.className = 'text-info';
+            return;
+        }
+
+        if (!principal || principal <= 0) {
+            emiCalcHint.textContent = 'Enter a valid principal amount first.';
+            emiCalcHint.className = 'text-warning';
+            return;
+        }
+        if (!periodMonths || periodMonths <= 0) {
+            emiCalcHint.textContent = 'Enter total loan period in months.';
+            emiCalcHint.className = 'text-warning';
+            return;
+        }
+        if (paidMonths < 0 || paidMonths >= periodMonths) {
+            emiCalcHint.textContent = 'EMIs already paid must be between 0 and period-1.';
+            emiCalcHint.className = 'text-warning';
+            return;
+        }
+        if (Number.isNaN(interestRate) || interestRate < 0) {
+            emiCalcHint.textContent = 'Enter a valid interest rate to auto-calculate EMI.';
+            emiCalcHint.className = 'text-warning';
+            return;
+        }
+
+        const remainingMonths = periodMonths - paidMonths;
+        const monthlyRate = interestMode.value === 'monthly' ? (interestRate / 100) : (interestRate / 1200);
+
+        let emiValue;
+        if (monthlyRate === 0) {
+            emiValue = principal / remainingMonths;
+        } else {
+            const growth = Math.pow(1 + monthlyRate, remainingMonths);
+            emiValue = (principal * monthlyRate * growth) / (growth - 1);
+        }
+
+        const roundedEmi = Math.max(1, Math.round(emiValue));
+        monthlyEmiInput.value = String(roundedEmi);
+        emiCalcHint.textContent = `Auto-calculated EMI: Rs. ${roundedEmi.toLocaleString()} for ${remainingMonths} remaining month(s).`;
+        emiCalcHint.className = 'text-success';
+        updateEmiPercentHint();
+    }
+
+    updateRateCopy();
+    applyDateBoundsAndDefaults();
+    syncDateFields();
+    updateEmiPercentHint();
+    calcEmiBtn.addEventListener('click', calculateEmi);
+    interestMode.addEventListener('change', updateRateCopy);
+    loanPeriodMonths.addEventListener('input', function () { syncDateFields(); updateEmiPercentHint(); });
+    startDateInput.addEventListener('change', function () { syncDateFields(); updateEmiPercentHint(); });
+    monthlyEmiInput.addEventListener('input', updateEmiPercentHint);
+    monthsPaid.addEventListener('input', function () {
+        const hasValue = monthsPaid.value.trim() !== '';
+        monthsPaidManual = hasValue;
+        if (!hasValue) {
+            monthsPaidManual = false;
+            updateMonthsPaidAuto();
+        } else {
+            monthsPaidHint.textContent = 'Using manual value.';
+            monthsPaidHint.className = 'form-text text-info';
+        }
+    });
+})();
+</script>
+{% endblock %}

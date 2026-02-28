@@ -1,0 +1,210 @@
+{% extends 'admin/layout.html' %}
+{% load static %}
+{% block title %}Admin Analytics | EMI Analyzer{% endblock %}
+{% block content %}
+<div class="mf-page-head animate-on-scroll">
+    <div>
+        <h4 class="mb-1">Analytics Center</h4>
+        <p class="mb-0">Loan mix, risk trend, expenses, and interest analytics.</p>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-2"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Green</p><h5 class="mb-0 text-success">{{ safe_count }}</h5></div></div></div>
+    <div class="col-md-2"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Yellow</p><h5 class="mb-0 text-warning">{{ risky_count }}</h5></div></div></div>
+    <div class="col-md-2"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Red</p><h5 class="mb-0 text-danger">{{ danger_count }}</h5></div></div></div>
+    <div class="col-md-2"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Total Loans</p><h5 class="mb-0">{{ total_loans }}</h5></div></div></div>
+    <div class="col-md-2"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">High Interest</p><h5 class="mb-0 text-danger">{{ high_interest_loan_count }}</h5></div></div></div>
+    <div class="col-md-2"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Avg Interest</p><h5 class="mb-0">{{ avg_interest_rate|floatformat:2 }}%</h5></div></div></div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-4"><div class="card mf-chart-card h-100"><div class="card-body"><h6 class="mb-2">Loan-Type Distribution</h6><div class="mf-chart-wrap"><canvas id="loanDistributionChart" height="260"></canvas></div><div class="mf-chart-empty d-none" id="loanDistributionFallback"></div></div></div></div>
+    <div class="col-lg-4"><div class="card mf-chart-card h-100"><div class="card-body"><h6 class="mb-2">Monthly New Users</h6><div class="mf-chart-wrap"><canvas id="monthlyUsersChart" height="260"></canvas></div><div class="mf-chart-empty d-none" id="monthlyUsersFallback"></div></div></div></div>
+    <div class="col-lg-4"><div class="card mf-chart-card h-100"><div class="card-body"><h6 class="mb-2">EMI Zone Trend</h6><div class="mf-chart-wrap"><canvas id="zoneTrendChart" height="260"></canvas></div><div class="mf-chart-empty d-none" id="zoneTrendFallback"></div></div></div></div>
+    <div class="col-lg-4"><div class="card mf-chart-card h-100"><div class="card-body"><h6 class="mb-2">Average Interest by Type</h6><div class="mf-chart-wrap"><canvas id="interestComparisonChart" height="260"></canvas></div><div class="mf-chart-empty d-none" id="interestComparisonFallback"></div></div></div></div>
+    <div class="col-lg-4"><div class="card mf-chart-card h-100"><div class="card-body"><h6 class="mb-2">Expense Category Distribution</h6><div class="mf-chart-wrap"><canvas id="expenseDistributionChart" height="260"></canvas></div><div class="mf-chart-empty d-none" id="expenseDistributionFallback"></div></div></div></div>
+    <div class="col-lg-4"><div class="card mf-chart-card h-100"><div class="card-body"><h6 class="mb-2">Loan Timeline (Ending)</h6><div class="mf-chart-wrap"><canvas id="loanTimelineAdminChart" height="260"></canvas></div><div class="mf-chart-empty d-none" id="loanTimelineFallback"></div></div></div></div>
+</div>
+
+{{ chart_payload|json_script:'adminAnalyticsPayload' }}
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+(() => {
+    const payloadNode = document.getElementById('adminAnalyticsPayload');
+    if (!payloadNode) return;
+    const payload = JSON.parse(payloadNode.textContent);
+    const isDark = document.body.classList.contains('mf-admin-dark');
+    const gridColor = isDark ? 'rgba(148, 163, 184, 0.28)' : 'rgba(148, 163, 184, 0.2)';
+    const textColor = isDark ? '#dbe5f5' : '#334155';
+    const palette = ['#2563eb', '#16a34a', '#f59e0b', '#dc2626', '#7c3aed', '#0ea5e9', '#ea580c', '#14b8a6'];
+    const showFallback = (id, title, labels, values) => {
+        const box = document.getElementById(id);
+        if (!box) return;
+        const safeLabels = Array.isArray(labels) ? labels : [];
+        const safeValues = Array.isArray(values) ? values : [];
+        const lines = safeLabels.slice(0, 4).map((label, index) => `${label}: ${safeValues[index] ?? 0}`);
+        box.innerHTML = `<strong>${title}</strong><br>${lines.length ? lines.join('<br>') : 'No chart data available.'}`;
+        box.classList.remove('d-none');
+    };
+    const hideCanvas = (id) => {
+        const canvas = document.getElementById(id);
+        if (canvas) {
+            canvas.style.display = 'none';
+        }
+    };
+    const canRender = () => typeof Chart !== 'undefined';
+    const hasAnyNonZero = (values) => Array.isArray(values) && values.some((value) => Number(value) !== 0);
+
+    if (!canRender()) {
+        hideCanvas('loanDistributionChart');
+        hideCanvas('monthlyUsersChart');
+        hideCanvas('zoneTrendChart');
+        hideCanvas('interestComparisonChart');
+        hideCanvas('expenseDistributionChart');
+        hideCanvas('loanTimelineAdminChart');
+        showFallback('loanDistributionFallback', 'Loan-Type Distribution', payload.loan_distribution.labels, payload.loan_distribution.values);
+        showFallback('monthlyUsersFallback', 'Monthly New Users', payload.monthly_users.labels, payload.monthly_users.values);
+        showFallback('zoneTrendFallback', 'EMI Zone Trend', payload.emi_zone_trend.labels, payload.emi_zone_trend.high);
+        showFallback('interestComparisonFallback', 'Average Interest by Type', payload.interest_comparison.labels, payload.interest_comparison.values);
+        showFallback('expenseDistributionFallback', 'Expense Category Distribution', payload.expense_distribution.labels, payload.expense_distribution.values);
+        showFallback('loanTimelineFallback', 'Loan Timeline', payload.loan_timeline.labels, payload.loan_timeline.values);
+        return;
+    }
+
+    try {
+    new Chart(document.getElementById('loanDistributionChart'), {
+        type: 'pie',
+        data: {
+            labels: payload.loan_distribution.labels,
+            datasets: [{ data: payload.loan_distribution.values, backgroundColor: palette }]
+        },
+        options: { plugins: { legend: { position: 'bottom', labels: { color: textColor } } } }
+    });
+    } catch (error) {
+        hideCanvas('loanDistributionChart');
+        showFallback('loanDistributionFallback', 'Loan-Type Distribution', payload.loan_distribution.labels, payload.loan_distribution.values);
+    }
+
+    if (!hasAnyNonZero(payload.monthly_users.values)) {
+        hideCanvas('monthlyUsersChart');
+        showFallback('monthlyUsersFallback', 'Monthly New Users', payload.monthly_users.labels, payload.monthly_users.values);
+    } else {
+    try {
+    new Chart(document.getElementById('monthlyUsersChart'), {
+        type: 'bar',
+        data: {
+            labels: payload.monthly_users.labels,
+            datasets: [{ label: 'Users', data: payload.monthly_users.values, backgroundColor: '#3366ff', borderRadius: 10 }]
+        },
+        options: {
+            plugins: { legend: { labels: { color: textColor } } },
+            scales: {
+                y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: textColor } },
+                x: { grid: { display: false }, ticks: { color: textColor } }
+            }
+        }
+    });
+    } catch (error) {
+        hideCanvas('monthlyUsersChart');
+        showFallback('monthlyUsersFallback', 'Monthly New Users', payload.monthly_users.labels, payload.monthly_users.values);
+    }
+    }
+
+    if (!hasAnyNonZero(payload.emi_zone_trend.high) && !hasAnyNonZero(payload.emi_zone_trend.medium) && !hasAnyNonZero(payload.emi_zone_trend.low)) {
+        hideCanvas('zoneTrendChart');
+        showFallback('zoneTrendFallback', 'EMI Zone Trend', payload.emi_zone_trend.labels, payload.emi_zone_trend.high);
+    } else {
+    try {
+    new Chart(document.getElementById('zoneTrendChart'), {
+        type: 'line',
+        data: {
+            labels: payload.emi_zone_trend.labels,
+            datasets: [
+                { label: 'Low', data: payload.emi_zone_trend.low, borderColor: '#16a34a', backgroundColor: 'rgba(22,163,74,0.2)', tension: 0.3, fill: true },
+                { label: 'Medium', data: payload.emi_zone_trend.medium, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.18)', tension: 0.3, fill: true },
+                { label: 'High', data: payload.emi_zone_trend.high, borderColor: '#dc2626', backgroundColor: 'rgba(220,38,38,0.18)', tension: 0.3, fill: true }
+            ]
+        },
+        options: {
+            plugins: { legend: { labels: { color: textColor } } },
+            scales: {
+                y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: textColor } },
+                x: { grid: { display: false }, ticks: { color: textColor } }
+            }
+        }
+    });
+    } catch (error) {
+        hideCanvas('zoneTrendChart');
+        showFallback('zoneTrendFallback', 'EMI Zone Trend', payload.emi_zone_trend.labels, payload.emi_zone_trend.high);
+    }
+    }
+
+    if (!hasAnyNonZero(payload.interest_comparison.values)) {
+        hideCanvas('interestComparisonChart');
+        showFallback('interestComparisonFallback', 'Average Interest by Type', payload.interest_comparison.labels, payload.interest_comparison.values);
+    } else {
+    try {
+    new Chart(document.getElementById('interestComparisonChart'), {
+        type: 'bar',
+        data: {
+            labels: payload.interest_comparison.labels,
+            datasets: [{ label: 'Avg Interest %', data: payload.interest_comparison.values, backgroundColor: '#0ea5e9', borderRadius: 10 }]
+        },
+        options: {
+            plugins: { legend: { labels: { color: textColor } } },
+            scales: {
+                y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: textColor } },
+                x: { grid: { display: false }, ticks: { color: textColor } }
+            }
+        }
+    });
+    } catch (error) {
+        hideCanvas('interestComparisonChart');
+        showFallback('interestComparisonFallback', 'Average Interest by Type', payload.interest_comparison.labels, payload.interest_comparison.values);
+    }
+    }
+
+    try {
+    new Chart(document.getElementById('expenseDistributionChart'), {
+        type: 'doughnut',
+        data: {
+            labels: payload.expense_distribution.labels,
+            datasets: [{ data: payload.expense_distribution.values, backgroundColor: ['#fb7185', '#60a5fa', '#34d399', '#fbbf24'], borderColor: '#fff', borderWidth: 2 }]
+        },
+        options: { plugins: { legend: { position: 'bottom', labels: { color: textColor } } }, cutout: '55%' }
+    });
+    } catch (error) {
+        hideCanvas('expenseDistributionChart');
+        showFallback('expenseDistributionFallback', 'Expense Category Distribution', payload.expense_distribution.labels, payload.expense_distribution.values);
+    }
+
+    if (!hasAnyNonZero(payload.loan_timeline.values)) {
+        hideCanvas('loanTimelineAdminChart');
+        showFallback('loanTimelineFallback', 'Loan Timeline', payload.loan_timeline.labels, payload.loan_timeline.values);
+    } else {
+    try {
+    new Chart(document.getElementById('loanTimelineAdminChart'), {
+        type: 'line',
+        data: {
+            labels: payload.loan_timeline.labels,
+            datasets: [{ label: 'Loan Count', data: payload.loan_timeline.values, borderColor: '#7c3aed', backgroundColor: 'rgba(124,58,237,0.2)', tension: 0.3, fill: true }]
+        },
+        options: {
+            plugins: { legend: { labels: { color: textColor } } },
+            scales: {
+                y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: textColor } },
+                x: { grid: { display: false }, ticks: { color: textColor } }
+            }
+        }
+    });
+    } catch (error) {
+        hideCanvas('loanTimelineAdminChart');
+        showFallback('loanTimelineFallback', 'Loan Timeline', payload.loan_timeline.labels, payload.loan_timeline.values);
+    }
+    }
+})();
+</script>
+{% endblock %}

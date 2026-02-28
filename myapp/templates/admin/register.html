@@ -1,0 +1,15 @@
+{% extends 'admin/layout.html' %}
+{% block title %}Admin Access | EMI Analyzer{% endblock %}
+{% block content %}
+<div class="row justify-content-center align-items-center min-vh-100 py-4">
+    <div class="col-md-8 col-lg-6">
+        <div class="card mf-auth-card">
+            <div class="card-body p-4 p-lg-5 text-center">
+                <h4 class="mb-2">Admin Registration Disabled</h4>
+                <p class="text-muted mb-4">Admin accounts are provisioned directly in the database by system owners.</p>
+                <a href="{% url 'admin_login' %}" class="btn btn-primary">Back to Admin Login</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

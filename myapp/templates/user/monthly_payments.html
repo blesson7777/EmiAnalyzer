@@ -1,0 +1,58 @@
+{% extends 'user/layout.html' %}
+{% block title %}Monthly Payments | EMI Analyzer{% endblock %}
+{% block content %}
+<div class="mf-page-head">
+    <div>
+        <h4 class="mb-1">Monthly Payments</h4>
+        <p class="mb-0">Payments due for {{ month_label }} across loans and credit cards.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'loan_list' %}" class="btn btn-outline-primary btn-sm">Manage Loans</a>
+        <a href="{% url 'credit_cards' %}" class="btn btn-outline-secondary btn-sm">Manage Cards</a>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-3"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Total Due</p><h5 class="mb-0 text-danger">Rs. {{ total_due|floatformat:0 }}</h5></div></div></div>
+    <div class="col-md-3"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Loan Due</p><h5 class="mb-0">Rs. {{ loan_due_total|floatformat:0 }}</h5></div></div></div>
+    <div class="col-md-3"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Card Due</p><h5 class="mb-0">Rs. {{ card_due_total|floatformat:0 }}</h5></div></div></div>
+    <div class="col-md-3"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Income Left After Due</p><h5 class="mb-0 {% if net_after_due < 0 %}text-danger{% else %}text-success{% endif %}">Rs. {{ net_after_due|floatformat:0 }}</h5></div></div></div>
+</div>
+
+<div class="card mf-table-card">
+    <div class="card-body p-0">
+        <div class="px-3 pt-3 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">Due Items</h6>
+            <span class="badge text-bg-primary">{{ payment_count }} item{{ payment_count|pluralize }}</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table mf-data-table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Source</th>
+                        <th>Lender / Issuer</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Note</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in payment_rows %}
+                    <tr>
+                        <td>{{ row.category }}</td>
+                        <td>{{ row.source }}</td>
+                        <td>{{ row.lender|default:'-' }} </td>
+                        <td class="fw-semibold">Rs. {{ row.amount|floatformat:0 }}</td>
+                        <td>{{ row.status }}</td>
+                        <td>{{ row.note }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center py-4">No payment due for this month.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

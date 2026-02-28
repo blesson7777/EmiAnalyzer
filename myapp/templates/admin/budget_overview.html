@@ -1,0 +1,74 @@
+{% extends 'admin/layout.html' %}
+{% block title %}Budget Overview | EMI Analyzer Admin{% endblock %}
+{% block content %}
+<div class="mf-page-head">
+    <div>
+        <h4 class="mb-1">Budget Monitoring</h4>
+        <p class="mb-0">Overspending and negative-cashflow detection after loan and card obligations.</p>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="card mf-mini-card h-100">
+            <div class="card-body">
+                <p class="mf-mini-label mb-1">Overspending Users</p>
+                <h4 class="text-warning mb-0">{{ overspending_count }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card mf-mini-card h-100">
+            <div class="card-body">
+                <p class="mf-mini-label mb-1">Negative Cashflow Users</p>
+                <h4 class="text-danger mb-0">{{ negative_cashflow_count }}</h4>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mf-table-card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table mf-data-table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Budget Added</th>
+                        <th>Total Budget</th>
+                        <th>Card Due</th>
+                        <th>Income Left After Obligations</th>
+                        <th>Savings After Obligations</th>
+                        <th>Flags</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in budget_rows %}
+                    <tr>
+                        <td><a href="{% url 'admin_user_details' row.user.id %}">{{ row.user.username }}</a></td>
+                        <td>
+                            {% if row.budget_obj %}
+                                <span class="badge text-bg-success">Yes</span>
+                            {% else %}
+                                <span class="badge text-bg-secondary">No</span>
+                            {% endif %}
+                        </td>
+                        <td>Rs. {{ row.budget_total|floatformat:0 }}</td>
+                        <td>Rs. {{ row.card_due_estimate|floatformat:0 }}</td>
+                        <td>Rs. {{ row.remaining_after_emi|floatformat:0 }}</td>
+                        <td>Rs. {{ row.savings_after_emi|floatformat:0 }}</td>
+                        <td>
+                            {% if row.overspending %}<span class="badge text-bg-warning">Overspending</span>{% endif %}
+                            {% if row.negative_cashflow %}<span class="badge text-bg-danger">Negative Cashflow</span>{% endif %}
+                            {% if not row.overspending and not row.negative_cashflow %}<span class="badge text-bg-success">Stable</span>{% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center py-4">No budget records found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends 'user/layout.html' %}
+{% block title %}Loans | EMI Analyzer{% endblock %}
+{% block content %}
+<div class="mf-page-head"><div><h4 class="mb-1">Your Loans</h4><p class="mb-0">Manage all active loan entries.</p></div><a href="{% url 'add_loan' %}" class="btn btn-primary">Add Loan</a></div>
+<div class="card mf-table-card"><div class="card-body p-0"><div class="table-responsive">
+<table class="table mf-data-table align-middle mb-0">
+<thead><tr><th>Type</th><th>Lender</th><th>Principal</th><th>EMI</th><th>Interest</th><th>Start</th><th>End</th><th></th></tr></thead>
+<tbody>
+{% for loan in loans %}
+<tr>
+<td>{{ loan.loan_type }}</td><td>{{ loan.lender|default:'-' }}</td><td>Rs. {{ loan.principal|floatformat:0 }}</td><td>Rs. {{ loan.monthly_emi|floatformat:0 }}</td><td>{{ loan.interest_rate|floatformat:2 }}%</td><td>{{ loan.start_date }}</td><td>{{ loan.end_date }}</td>
+<td>
+    <div class="d-flex gap-2">
+        <a href="{% url 'edit_loan' loan.id %}" class="btn btn-sm btn-outline-primary">Edit</a>
+        <form method="post" action="{% url 'delete_loan' loan.id %}" onsubmit="return confirm('Delete this loan?');">{% csrf_token %}<button class="btn btn-sm btn-outline-danger" type="submit">Delete</button></form>
+    </div>
+</td>
+</tr>
+{% empty %}
+<tr><td colspan="8" class="text-center py-4">No loans added yet.</td></tr>
+{% endfor %}
+</tbody></table></div></div></div>
+{% endblock %}

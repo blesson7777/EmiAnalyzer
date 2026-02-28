@@ -1,0 +1,79 @@
+{% extends 'admin/layout.html' %}
+{% block title %}Users | EMI Analyzer Admin{% endblock %}
+{% block content %}
+<div class="mf-page-head">
+    <div>
+        <h4 class="mb-1">User Management</h4>
+        <p class="mb-0">Search users, review status, and open risk summaries.</p>
+    </div>
+    <form method="get" class="d-flex gap-2">
+        <input type="text" class="form-control" name="q" placeholder="Search username or email" value="{{ query }}">
+        <button class="btn btn-primary" type="submit">Search</button>
+    </form>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-4"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Total Users</p><h4 class="mb-0">{{ total_users }}</h4></div></div></div>
+    <div class="col-md-4"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Active Users</p><h4 class="mb-0 text-success">{{ active_users }}</h4></div></div></div>
+    <div class="col-md-4"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Inactive Users</p><h4 class="mb-0 text-danger">{{ inactive_users }}</h4></div></div></div>
+</div>
+
+<div class="card mf-table-card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table mf-data-table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Status</th>
+                        <th>Loan Count</th>
+                        <th>EMI Ratio</th>
+                        <th>Zone</th>
+                        <th>Risk</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in user_rows %}
+                    <tr>
+                        <td>
+                            <div class="fw-semibold">{{ row.user.username }}</div>
+                            <div class="small text-muted">{{ row.masked_email }}</div>
+                        </td>
+                        <td>
+                            {% if row.is_active %}
+                                <span class="badge text-bg-success">Active</span>
+                            {% else %}
+                                <span class="badge text-bg-secondary">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ row.loan_count }}</td>
+                        <td>{{ row.emi_ratio|floatformat:1 }}%</td>
+                        <td>
+                            <span class="badge {% if row.health_class == 'green' %}text-bg-success{% elif row.health_class == 'yellow' %}text-bg-warning{% else %}text-bg-danger{% endif %}">
+                                {{ row.health_zone }}
+                            </span>
+                        </td>
+                        <td>{{ row.risk_label }}</td>
+                        <td>
+                            <div class="d-flex gap-2">
+                                <a href="{% url 'admin_user_details' row.user.id %}" class="btn btn-sm btn-outline-primary">View</a>
+                                <form method="post" action="{% url 'admin_toggle_user_active' row.user.id %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="admin_users">
+                                    <button type="submit" class="btn btn-sm btn-outline-{% if row.is_active %}warning{% else %}success{% endif %}">
+                                        {% if row.is_active %}Disable{% else %}Activate{% endif %}
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center py-4">No users found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

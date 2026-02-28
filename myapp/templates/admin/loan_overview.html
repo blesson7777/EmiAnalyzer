@@ -1,0 +1,88 @@
+{% extends 'admin/layout.html' %}
+{% block title %}Loan Overview | EMI Analyzer Admin{% endblock %}
+{% block content %}
+<div class="mf-page-head">
+    <div>
+        <h4 class="mb-1">System Loan Overview</h4>
+        <p class="mb-0">Track high-interest, ending-soon, and multi-loan patterns.</p>
+    </div>
+    <form method="get" class="d-flex gap-2">
+        <select class="form-select" name="loan_type">
+            <option value="">All Loan Types</option>
+            {% for loan_type in loan_types %}
+                <option value="{{ loan_type }}" {% if loan_type_filter == loan_type %}selected{% endif %}>{{ loan_type }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-primary">Apply</button>
+    </form>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-4"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Loans Shown</p><h4 class="mb-0">{{ loans|length }}</h4></div></div></div>
+    <div class="col-md-4"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">High-Interest Loans</p><h4 class="mb-0 text-danger">{{ high_interest_ids|length }}</h4></div></div></div>
+    <div class="col-md-4"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Users With Multiple Loans</p><h4 class="mb-0 text-warning">{{ multi_loan_users|length }}</h4></div></div></div>
+</div>
+
+<div class="card mf-table-card mb-4">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table mf-data-table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Type</th>
+                        <th>Lender</th>
+                        <th>EMI</th>
+                        <th>Interest</th>
+                        <th>End Date</th>
+                        <th>Flags</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for loan in loans %}
+                    <tr>
+                        <td><a href="{% url 'admin_user_details' loan.user.id %}">{{ loan.user.username }}</a></td>
+                        <td>{{ loan.loan_type }}</td>
+                        <td>{{ loan.lender|default:'-' }}</td>
+                        <td>Rs. {{ loan.monthly_emi|floatformat:0 }}</td>
+                        <td>{{ loan.interest_rate|floatformat:2 }}%</td>
+                        <td>{{ loan.end_date }}</td>
+                        <td>
+                            {% if loan.id in high_interest_ids %}
+                                <span class="badge text-bg-danger">High &gt; {{ high_interest_limit }}%</span>
+                            {% endif %}
+                            {% if loan.id in ending_soon_ids %}
+                                <span class="badge text-bg-warning">Ending Soon</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center py-4">No loans available for the selected filter.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="card mf-panel-card">
+    <div class="card-body">
+        <h6 class="mb-3">Users With Multiple Loans</h6>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead><tr><th>User</th><th>Loan Count</th></tr></thead>
+                <tbody>
+                    {% for row in multi_loan_users %}
+                    <tr>
+                        <td><a href="{% url 'admin_user_details' row.user__id %}">{{ row.user__username }}</a></td>
+                        <td>{{ row.loan_count }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="2" class="text-center py-3">No multi-loan users.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends 'admin/layout.html' %}
+{% block title %}Admin Redirect | EMI Analyzer{% endblock %}
+{% block content %}
+<div class="mf-page-head">
+    <div>
+        <h4 class="mb-1">Budget Entry Disabled For Admin</h4>
+        <p class="mb-0">Use Budget Overview to inspect user budget health.</p>
+    </div>
+    <a href="{% url 'admin_budget_overview' %}" class="btn btn-primary">Open Budget Overview</a>
+</div>
+{% endblock %}

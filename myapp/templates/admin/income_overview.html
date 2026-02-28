@@ -1,0 +1,59 @@
+{% extends 'admin/layout.html' %}
+{% block title %}Income Overview | EMI Analyzer Admin{% endblock %}
+{% block content %}
+<div class="mf-page-head">
+    <div>
+        <h4 class="mb-1">Income Overview</h4>
+        <p class="mb-0">Income availability and debt-obligation pressure by user.</p>
+    </div>
+</div>
+
+<div class="card mf-table-card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table mf-data-table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Income Status</th>
+                        <th>Total Income</th>
+                        <th>Loan EMI</th>
+                        <th>Card Due</th>
+                        <th>Total Obligation</th>
+                        <th>Loan EMI Ratio</th>
+                        <th>Overall Debt Ratio</th>
+                        <th>Zone</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in income_rows %}
+                    <tr>
+                        <td><a href="{% url 'admin_user_details' row.user.id %}">{{ row.user.username }}</a></td>
+                        <td>
+                            {% if row.income_obj %}
+                                <span class="badge text-bg-success">Added</span>
+                            {% else %}
+                                <span class="badge text-bg-secondary">Missing</span>
+                            {% endif %}
+                        </td>
+                        <td>Rs. {{ row.total_income|floatformat:0 }}</td>
+                        <td>Rs. {{ row.total_emi|floatformat:0 }}</td>
+                        <td>Rs. {{ row.card_due_estimate|floatformat:0 }}</td>
+                        <td>Rs. {{ row.total_monthly_obligation|floatformat:0 }}</td>
+                        <td>{{ row.emi_ratio|floatformat:1 }}%</td>
+                        <td>{{ row.overall_burden_ratio|floatformat:1 }}%</td>
+                        <td>
+                            <span class="badge {% if row.health_class == 'green' %}text-bg-success{% elif row.health_class == 'yellow' %}text-bg-warning{% else %}text-bg-danger{% endif %}">
+                                {{ row.health_zone }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="9" class="text-center py-4">No user income records found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

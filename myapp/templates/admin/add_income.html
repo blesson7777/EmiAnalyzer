@@ -1,0 +1,11 @@
+{% extends 'admin/layout.html' %}
+{% block title %}Admin Redirect | EMI Analyzer{% endblock %}
+{% block content %}
+<div class="mf-page-head">
+    <div>
+        <h4 class="mb-1">Income Entry Disabled For Admin</h4>
+        <p class="mb-0">Admin accounts use system analytics modules instead of personal income forms.</p>
+    </div>
+    <a href="{% url 'admin_income_overview' %}" class="btn btn-primary">Open Income Overview</a>
+</div>
+{% endblock %}

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EMI Advisory</title>
+</head>
+<body style="margin:0;padding:0;background:#f1f5fb;font-family:Arial,sans-serif;color:#1f2a44;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f1f5fb;padding:24px 0;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:660px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #dbe5f4;">
+                    <tr>
+                        <td style="background:linear-gradient(135deg,#0f766e,#2563eb);padding:22px 28px;color:#ffffff;">
+                            <h2 style="margin:0;font-size:22px;font-weight:700;">EMI Analyzer Advisory</h2>
+                            <p style="margin:6px 0 0 0;font-size:13px;opacity:0.95;">Financial risk and repayment guidance</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:24px 28px;">
+                            <p style="margin:0 0 12px 0;font-size:15px;">Hello,</p>
+                            <p style="margin:0 0 16px 0;font-size:14px;line-height:1.6;">
+                                The EMI Analyzer team has shared an important advisory for your debt management plan.
+                            </p>
+                            <div style="background:#f8fbff;border:1px solid #d8e4fb;border-radius:10px;padding:16px;">
+                                <h3 style="margin:0 0 10px 0;font-size:16px;color:#0f172a;">{{ subject_line }}</h3>
+                                <p style="margin:0;font-size:14px;line-height:1.7;color:#334155;">{{ message_body|linebreaksbr }}</p>
+                            </div>
+                            <p style="margin:16px 0 0 0;font-size:12px;color:#64748b;">
+                                Sent by {{ sent_by }} to {{ recipient_count }} recipient(s).
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:14px 28px;background:#f8fbff;border-top:1px solid #e5ecf7;">
+                            <p style="margin:0;font-size:11px;color:#64748b;">This is an official advisory from EMI Analyzer.</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

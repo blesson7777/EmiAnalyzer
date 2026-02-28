@@ -1,0 +1,115 @@
+{% extends 'admin/layout.html' %}
+{% block title %}System Risk | EMI Analyzer Admin{% endblock %}
+{% block content %}
+<div class="mf-page-head">
+    <div>
+        <h4 class="mb-1">AI Risk Engine</h4>
+        <p class="mb-0">Detect risky users and send targeted advisory notifications.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap align-items-center">
+        <form method="get" class="d-flex gap-2">
+            <input type="hidden" name="mode" value="{{ mode }}">
+            <input type="text" class="form-control" name="q" placeholder="Search username or email" value="{{ query }}">
+            <button type="submit" class="btn btn-primary">Search</button>
+        </form>
+        <a href="{% url 'admin_system_risk' %}?mode=risky{% if query %}&q={{ query|urlencode }}{% endif %}" class="btn btn-outline-primary {% if mode == 'risky' %}active{% endif %}">Risky</a>
+        <a href="{% url 'admin_system_risk' %}?mode=danger{% if query %}&q={{ query|urlencode }}{% endif %}" class="btn btn-outline-danger {% if mode == 'danger' %}active{% endif %}">High</a>
+        <a href="{% url 'admin_system_risk' %}?mode=medium{% if query %}&q={{ query|urlencode }}{% endif %}" class="btn btn-outline-warning {% if mode == 'medium' %}active{% endif %}">Medium</a>
+        <a href="{% url 'admin_system_risk' %}?mode=low{% if query %}&q={{ query|urlencode }}{% endif %}" class="btn btn-outline-success {% if mode == 'low' %}active{% endif %}">Low</a>
+        <a href="{% url 'admin_system_risk' %}?mode=all{% if query %}&q={{ query|urlencode }}{% endif %}" class="btn btn-outline-secondary {% if mode == 'all' %}active{% endif %}">All</a>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-2"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">High Risk</p><h4 class="text-danger mb-0">{{ high_risk_count }}</h4></div></div></div>
+    <div class="col-md-2"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Medium Risk</p><h4 class="text-warning mb-0">{{ medium_risk_count }}</h4></div></div></div>
+    <div class="col-md-2"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Low Risk</p><h4 class="text-success mb-0">{{ low_risk_count }}</h4></div></div></div>
+    <div class="col-md-2"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Red Zone</p><h4 class="text-danger mb-0">{{ red_zone_count }}</h4></div></div></div>
+    <div class="col-md-2"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Yellow Zone</p><h4 class="text-warning mb-0">{{ yellow_zone_count }}</h4></div></div></div>
+    <div class="col-md-2"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">High Interest</p><h4 class="text-danger mb-0">{{ high_interest_user_count }}</h4></div></div></div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-7">
+        <div class="card mf-table-card h-100">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table mf-data-table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Loan/Overall Ratio</th>
+                                <th>Loans</th>
+                                <th>Zone</th>
+                                <th>Risk</th>
+                                <th>Reasons</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in risk_rows %}
+                            <tr>
+                                <td><a href="{% url 'admin_user_details' row.user.id %}">{{ row.user.username }}</a></td>
+                                <td>{{ row.emi_ratio|floatformat:1 }}% / {{ row.overall_burden_ratio|default:row.emi_ratio|floatformat:1 }}%</td>
+                                <td>{{ row.loan_count }}</td>
+                                <td>
+                                    <span class="badge {% if row.health_class == 'green' %}text-bg-success{% elif row.health_class == 'yellow' %}text-bg-warning{% else %}text-bg-danger{% endif %}">
+                                        {{ row.health_zone }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge {% if row.risk_level == 'high' %}text-bg-danger{% elif row.risk_level == 'medium' %}text-bg-warning{% else %}text-bg-success{% endif %}">
+                                        {{ row.risk_label }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if row.risk_reasons %}
+                                        {{ row.risk_reasons|join:', ' }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="6" class="text-center py-4">No matching users for selected mode/search.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-5">
+        <div class="card mf-form-card h-100">
+            <div class="card-body p-4">
+                <h6 class="mb-3">Send Advisory Email</h6>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="mode" value="{{ mode }}">
+                    <div class="mb-3">
+                        <label class="form-label">Target Group</label>
+                        <select class="form-select" name="target_group" required>
+                            <option value="">Select group</option>
+                            <option value="red" {% if compose_target_group == 'red' %}selected{% endif %}>Red Zone Users</option>
+                            <option value="yellow" {% if compose_target_group == 'yellow' %}selected{% endif %}>Yellow Zone Users</option>
+                            <option value="high_interest" {% if compose_target_group == 'high_interest' %}selected{% endif %}>High-Interest Loan Users</option>
+                            <option value="high_risk" {% if compose_target_group == 'high_risk' %}selected{% endif %}>High Risk Users</option>
+                            <option value="medium_risk" {% if compose_target_group == 'medium_risk' %}selected{% endif %}>Medium Risk Users</option>
+                            <option value="all" {% if compose_target_group == 'all' %}selected{% endif %}>All Active Users</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Subject</label>
+                        <input type="text" class="form-control" name="subject" minlength="3" maxlength="150" value="{{ compose_subject }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Message</label>
+                        <textarea class="form-control" name="message" rows="5" minlength="10" required>{{ compose_message }}</textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Send Notification</button>
+                    <p class="small text-muted mt-2 mb-0">Only active users with a valid email will receive notifications.</p>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

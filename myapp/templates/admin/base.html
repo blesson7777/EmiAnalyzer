@@ -1,0 +1,11 @@
+{% extends 'admin/layout.html' %}
+{% block title %}Admin | EMI Analyzer{% endblock %}
+{% block content %}
+<div class="mf-page-head">
+    <div>
+        <h4 class="mb-1">Admin Console</h4>
+        <p class="mb-0">Use the sidebar to access analytics and controls.</p>
+    </div>
+    <a href="{% url 'dashboard' %}" class="btn btn-primary">Go to Dashboard</a>
+</div>
+{% endblock %}

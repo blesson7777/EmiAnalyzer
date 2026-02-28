@@ -1,0 +1,49 @@
+{% extends 'user/layout.html' %}
+{% block title %}{% if is_card_edit %}Edit Card{% else %}Add Card{% endif %} | EMI Analyzer{% endblock %}
+{% block content %}
+<div class="mf-page-head">
+    <div>
+        <h4 class="mb-1">{% if is_card_edit %}Edit Credit Card{% else %}Add Credit Card{% endif %}</h4>
+        <p class="mb-0">Save issuer, total limit, and interest/reward settings for this card.</p>
+    </div>
+    <a href="{% url 'credit_cards' %}" class="btn btn-outline-secondary btn-sm">Back to Cards</a>
+</div>
+
+<div class="card mf-form-card">
+    <div class="card-body p-4">
+        <form method="post">
+            {% csrf_token %}
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Card Name</label>
+                    <input type="text" class="form-control" name="card_name" maxlength="120" value="{{ card_form.card_name }}" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Issuer</label>
+                    <input type="text" class="form-control" name="issuer" maxlength="120" value="{{ card_form.issuer }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Card Total Limit</label>
+                    <input type="number" class="form-control" name="credit_limit" min="1" step="1" value="{{ card_form.credit_limit }}" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">EMI Interest Rate (%)</label>
+                    <input type="number" class="form-control" name="emi_interest_rate" min="0" max="100" step="0.01" value="{{ card_form.emi_interest_rate }}" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Monthly Spend Interest Rate (%)</label>
+                    <input type="number" class="form-control" name="monthly_spend_interest_rate" min="0" max="100" step="0.01" value="{{ card_form.monthly_spend_interest_rate }}" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Reward (%)</label>
+                    <input type="number" class="form-control" name="reward_percent" min="0" max="100" step="0.01" value="{{ card_form.reward_percent }}" required>
+                </div>
+            </div>
+            <div class="mt-3 d-flex gap-2">
+                <button type="submit" class="btn btn-primary">{% if is_card_edit %}Update Card{% else %}Save Card{% endif %}</button>
+                <a href="{% url 'credit_cards' %}" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

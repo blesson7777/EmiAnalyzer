@@ -1,0 +1,212 @@
+{% extends 'admin/layout.html' %}
+{% load static %}
+{% block title %}Admin Dashboard | EMI Analyzer{% endblock %}
+{% block content %}
+<div class="mf-page-head animate-on-scroll">
+    <div>
+        <h4 class="mb-1">Admin Dashboard</h4>
+        <p class="mb-0">System-wide debt signals and user risk posture.</p>
+    </div>
+    <a href="{% url 'admin_users' %}" class="btn btn-primary mf-btn-pill"><i class="bi bi-people me-1"></i>Manage Users</a>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card mf-report-card mf-report-primary h-100">
+            <div class="card-body">
+                <h3 class="mf-report-value" data-count="{{ total_users|default:0 }}" data-format="number">{{ total_users }}</h3>
+                <p class="mf-report-label mb-0">Registered Users</p>
+            </div>
+            <div class="mf-report-footer"><span>{{ active_users }} active</span><i class="bi bi-people-fill"></i></div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card mf-report-card mf-report-warning h-100">
+            <div class="card-body">
+                <h3 class="mf-report-value" data-count="{{ total_loans|default:0 }}" data-format="number">{{ total_loans }}</h3>
+                <p class="mf-report-label mb-0">Loans In System</p>
+            </div>
+            <div class="mf-report-footer"><span>{{ high_interest_user_count }} users high-interest</span><i class="bi bi-bank2"></i></div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card mf-report-card mf-report-danger h-100">
+            <div class="card-body">
+                <h3 class="mf-report-value">{{ average_emi_ratio|floatformat:2 }}%</h3>
+                <p class="mf-report-label mb-0">Average EMI Ratio</p>
+            </div>
+            <div class="mf-report-footer"><span>{{ danger_count }} danger users</span><i class="bi bi-exclamation-triangle-fill"></i></div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card mf-report-card mf-report-success h-100">
+            <div class="card-body">
+                <h3 class="mf-report-value" data-count="{{ new_users_30d|default:0 }}" data-format="number">{{ new_users_30d }}</h3>
+                <p class="mf-report-label mb-0">New Users (30d)</p>
+            </div>
+            <div class="mf-report-footer"><span>{{ inactive_users }} inactive</span><i class="bi bi-person-plus-fill"></i></div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card mf-mini-card h-100">
+            <div class="card-body">
+                <p class="mf-mini-label mb-1">Green Zone</p>
+                <h4 class="text-success mb-0">{{ safe_count }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card mf-mini-card h-100">
+            <div class="card-body">
+                <p class="mf-mini-label mb-1">Yellow Zone</p>
+                <h4 class="text-warning mb-0">{{ risky_count }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card mf-mini-card h-100">
+            <div class="card-body">
+                <p class="mf-mini-label mb-1">Red Zone</p>
+                <h4 class="text-danger mb-0">{{ danger_count }}</h4>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-8">
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="card mf-chart-card">
+                    <div class="card-body">
+                        <h6 class="mb-2">EMI Zone Distribution</h6>
+                        <canvas id="adminZoneChart" height="260"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card mf-chart-card">
+                    <div class="card-body">
+                        <h6 class="mb-2">Loan Type Mix</h6>
+                        <canvas id="adminLoanMixChart" height="260"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="card mf-chart-card">
+                    <div class="card-body">
+                        <h6 class="mb-2">User Signups (Last 6 Months)</h6>
+                        <canvas id="adminSignupChart" height="260"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="card mf-panel-card h-100">
+            <div class="card-body">
+                <h6 class="mb-3">Recent Users</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Zone</th>
+                                <th>Risk</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in recent_user_rows %}
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">{{ row.user.username }}</div>
+                                    <div class="small text-muted">{{ row.masked_email }}</div>
+                                </td>
+                                <td>
+                                    <span class="badge {% if row.health_class == 'green' %}text-bg-success{% elif row.health_class == 'yellow' %}text-bg-warning{% else %}text-bg-danger{% endif %}">
+                                        {{ row.health_zone }}
+                                    </span>
+                                </td>
+                                <td>{{ row.risk_label }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="3" class="text-center py-3">No users found.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ chart_payload|json_script:'adminDashboardPayload' }}
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+(() => {
+    const payloadNode = document.getElementById('adminDashboardPayload');
+    if (!payloadNode) return;
+    const payload = JSON.parse(payloadNode.textContent);
+    const isDark = document.body.classList.contains('mf-admin-dark');
+    const gridColor = isDark ? 'rgba(148, 163, 184, 0.28)' : 'rgba(148, 163, 184, 0.2)';
+    const textColor = isDark ? '#dbe5f5' : '#334155';
+
+    new Chart(document.getElementById('adminZoneChart'), {
+        type: 'doughnut',
+        data: {
+            labels: payload.zone_distribution.labels,
+            datasets: [{
+                data: payload.zone_distribution.values,
+                backgroundColor: ['#16a34a', '#f59e0b', '#dc2626'],
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            plugins: { legend: { position: 'bottom', labels: { color: textColor } } },
+            cutout: '58%'
+        }
+    });
+
+    new Chart(document.getElementById('adminLoanMixChart'), {
+        type: 'pie',
+        data: {
+            labels: payload.loan_mix.labels,
+            datasets: [{
+                data: payload.loan_mix.values,
+                backgroundColor: ['#0e7490', '#2563eb', '#f97316', '#16a34a', '#6d28d9', '#be123c', '#9333ea', '#ea580c']
+            }]
+        },
+        options: {
+            plugins: { legend: { position: 'bottom', labels: { color: textColor } } }
+        }
+    });
+
+    new Chart(document.getElementById('adminSignupChart'), {
+        type: 'bar',
+        data: {
+            labels: payload.signup_trend.labels,
+            datasets: [{
+                label: 'New Users',
+                data: payload.signup_trend.values,
+                backgroundColor: '#3366ff',
+                borderRadius: 10,
+                maxBarThickness: 42
+            }]
+        },
+        options: {
+            plugins: { legend: { labels: { color: textColor } } },
+            scales: {
+                y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: textColor } },
+                x: { grid: { display: false }, ticks: { color: textColor } }
+            }
+        }
+    });
+})();
+</script>
+{% endblock %}

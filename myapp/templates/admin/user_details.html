@@ -1,0 +1,98 @@
+{% extends 'admin/layout.html' %}
+{% block title %}User Detail | EMI Analyzer Admin{% endblock %}
+{% block content %}
+<div class="mf-page-head">
+    <div>
+        <h4 class="mb-1">User: {{ target_user.username }}</h4>
+        <p class="mb-0">Risk summary and account-level controls.</p>
+    </div>
+    <a href="{% url 'admin_users' %}" class="btn btn-outline-secondary">Back to Users</a>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-4">
+        <div class="card mf-panel-card h-100">
+            <div class="card-body">
+                <h6 class="mb-3">Account Info</h6>
+                <p class="mb-1"><strong>Username:</strong> {{ target_user.username }}</p>
+                <p class="mb-1"><strong>Email:</strong> {{ target_user.email|default:'Not set' }}</p>
+                <p class="mb-1"><strong>Phone:</strong> {{ target_phone_number }}</p>
+                <p class="mb-1"><strong>Member Since:</strong> {{ member_since|date:'d M Y' }}</p>
+                <p class="mb-1"><strong>Last Login:</strong> {% if last_login %}{{ last_login|date:'d M Y H:i' }}{% else %}Never{% endif %}</p>
+                <p class="mb-3"><strong>Status:</strong>
+                    {% if is_active %}
+                        <span class="badge text-bg-success">Active</span>
+                    {% else %}
+                        <span class="badge text-bg-secondary">Inactive</span>
+                    {% endif %}
+                </p>
+                <div class="d-grid gap-2">
+                    <form method="post" action="{% url 'admin_force_password_reset' target_user.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-primary w-100">Force Password Reset</button>
+                    </form>
+                    <form method="post" action="{% url 'admin_toggle_user_active' target_user.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.path }}">
+                        <button type="submit" class="btn btn-outline-warning w-100">{% if is_active %}Disable User{% else %}Activate User{% endif %}</button>
+                    </form>
+                    <form method="post" action="{% url 'admin_delete_user' target_user.id %}" onsubmit="return confirm('Delete this user account permanently?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-danger w-100">Delete User</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="row g-4">
+            <div class="col-md-4"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Loan EMI Ratio</p><h5 class="mb-0">{{ emi_ratio|floatformat:1 }}%</h5></div></div></div>
+            <div class="col-md-4"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Overall Debt Ratio</p><h5 class="mb-0">{{ overall_burden_ratio|floatformat:1 }}%</h5></div></div></div>
+            <div class="col-md-4"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Card Due (Monthly)</p><h5 class="mb-0">Rs. {{ card_due_estimate|floatformat:0 }}</h5></div></div></div>
+            <div class="col-md-4"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Zone</p><h5 class="mb-0">{{ health_zone }}</h5></div></div></div>
+            <div class="col-md-4"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Risk Level</p><h5 class="mb-0">{{ risk_label }}</h5></div></div></div>
+            <div class="col-md-4"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Active Loans</p><h5 class="mb-0">{{ loan_count }}</h5></div></div></div>
+            <div class="col-md-4"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">High-Interest Loans</p><h5 class="mb-0">{{ high_interest_count }}</h5></div></div></div>
+            <div class="col-md-4"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Card Outstanding</p><h5 class="mb-0">Rs. {{ credit_card_total_outstanding|floatformat:0 }}</h5></div></div></div>
+            <div class="col-md-4"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">EMI Remaining (Cards)</p><h5 class="mb-0">Rs. {{ credit_card_total_emi_remaining_balance|floatformat:0 }}</h5></div></div></div>
+            <div class="col-md-4"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Overspending</p><h5 class="mb-0">{% if overspending %}Yes{% else %}No{% endif %}</h5></div></div></div>
+        </div>
+        <div class="card mf-panel-card mt-4">
+            <div class="card-body">
+                <h6 class="mb-2">Smart Suggestion</h6>
+                <p class="mb-0">{{ smart_suggestion }}</p>
+            </div>
+        </div>
+        <div class="card mf-table-card mt-4">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table mf-data-table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Loan Type</th>
+                                <th>Lender</th>
+                                <th>Monthly EMI</th>
+                                <th>Interest</th>
+                                <th>End Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for loan in loans %}
+                            <tr>
+                                <td>{{ loan.loan_type }}</td>
+                                <td>{{ loan.lender|default:'-' }}</td>
+                                <td>Rs. {{ loan.monthly_emi|floatformat:0 }}</td>
+                                <td>{{ loan.interest_rate|floatformat:2 }}%</td>
+                                <td>{{ loan.end_date }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="5" class="text-center py-3">No loans found for this user.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

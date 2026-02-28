@@ -1,0 +1,14 @@
+{% extends 'user/layout.html' %}
+{% block title %}Income | EMI Analyzer{% endblock %}
+{% block content %}
+<div class="mf-page-head"><div><h4 class="mb-1">Income Planner</h4><p class="mb-0">Add or update income details.</p></div></div>
+<div class="card mf-form-card"><div class="card-body p-4">
+    <form method="post">{% csrf_token %}
+        <div class="row g-3">
+            <div class="col-md-6"><label class="form-label">Monthly Salary</label><input type="number" class="form-control" name="monthly_salary" min="0" value="{{ income.monthly_salary|default_if_none:'' }}" required></div>
+            <div class="col-md-6"><label class="form-label">Other Income</label><input type="number" class="form-control" name="other_income" min="0" value="{{ income.other_income|default_if_none:'' }}" required></div>
+        </div>
+        <button type="submit" class="btn btn-primary mt-4">Save Income</button>
+    </form>
+</div></div>
+{% endblock %}

@@ -1,0 +1,80 @@
+{% extends 'user/layout.html' %}
+{% block title %}Credit Cards | EMI Analyzer{% endblock %}
+{% block content %}
+<div class="mf-page-head">
+    <div>
+        <h4 class="mb-1">My Credit Cards</h4>
+        <p class="mb-0">Monthly spends reset each month. Only active card EMI remains in balance.</p>
+    </div>
+    <a href="{% url 'credit_card_add' %}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Add New Card</a>
+</div>
+<div class="alert alert-info py-2">Current statement month: <strong>{{ current_month_label }}</strong></div>
+
+<div class="row g-4">
+    {% for row in card_rows %}
+    <div class="col-xl-4 col-md-6">
+        <div class="mf-cc-real-wrap">
+            <a href="{% url 'credit_card_spend' row.card.id %}" class="mf-cc-real-card">
+                <div class="mf-cc-top">
+                    <span class="mf-cc-chip"></span>
+                    <span class="mf-cc-network">{{ row.card.issuer|default:'CARD'|upper }}</span>
+                </div>
+                <div class="mf-cc-number">**** **** **** {{ row.card.id }}</div>
+                <div class="d-flex justify-content-between align-items-end">
+                    <div>
+                        <small class="mf-cc-kicker">Card Holder</small>
+                        <div class="mf-cc-title">{{ user.username|upper }}</div>
+                    </div>
+                    <div class="text-end">
+                        <small class="mf-cc-kicker">Card Name</small>
+                        <div class="mf-cc-title">{{ row.card.card_name }}</div>
+                    </div>
+                </div>
+                <div class="row g-2 mt-3">
+                    <div class="col-6">
+                        <small class="mf-cc-kicker">Total Limit</small>
+                        <div class="mf-cc-value">Rs. {{ row.credit_limit|floatformat:0 }}</div>
+                    </div>
+                    <div class="col-6">
+                        <small class="mf-cc-kicker">Outstanding</small>
+                        <div class="mf-cc-value">Rs. {{ row.total_amount|floatformat:0 }}</div>
+                    </div>
+                    <div class="col-6">
+                        <small class="mf-cc-kicker">Current Spend</small>
+                        <div class="mf-cc-value">Rs. {{ row.monthly_spend_amount|floatformat:0 }}</div>
+                    </div>
+                    <div class="col-6">
+                        <small class="mf-cc-kicker">Active EMI / Mo</small>
+                        <div class="mf-cc-value">Rs. {{ row.emi_monthly_due|floatformat:0 }}</div>
+                    </div>
+                    <div class="col-6">
+                        <small class="mf-cc-kicker">Available</small>
+                        <div class="mf-cc-value">Rs. {{ row.available_limit|floatformat:0 }}</div>
+                    </div>
+                    <div class="col-6">
+                        <small class="mf-cc-kicker">Utilization</small>
+                        <div class="mf-cc-value">{{ row.utilization_percent|floatformat:1 }}%</div>
+                    </div>
+                </div>
+            </a>
+            <div class="d-flex gap-2 mt-2">
+                <a href="{% url 'credit_card_edit' row.card.id %}" class="btn btn-sm btn-outline-primary">Edit</a>
+                <form method="post" onsubmit="return confirm('Delete this card and all linked entries?');">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete_card">
+                    <input type="hidden" name="card_id" value="{{ row.card.id }}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="alert alert-warning mb-0">
+            No cards available.
+            <a href="{% url 'credit_card_add' %}" class="alert-link">Add your first card</a>.
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

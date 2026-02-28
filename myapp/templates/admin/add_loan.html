@@ -1,0 +1,11 @@
+{% extends 'admin/layout.html' %}
+{% block title %}Admin Redirect | EMI Analyzer{% endblock %}
+{% block content %}
+<div class="mf-page-head">
+    <div>
+        <h4 class="mb-1">Loan Entry Disabled For Admin</h4>
+        <p class="mb-0">Use Loan Overview to monitor all user loans.</p>
+    </div>
+    <a href="{% url 'admin_loan_overview' %}" class="btn btn-primary">Open Loan Overview</a>
+</div>
+{% endblock %}

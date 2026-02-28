@@ -1,0 +1,52 @@
+{% extends 'admin/layout.html' %}
+{% block title %}Admin Profile | EMI Analyzer{% endblock %}
+{% block content %}
+<div class="mf-page-head">
+    <div>
+        <h4 class="mb-1">Admin Profile</h4>
+        <p class="mb-0">Account information and platform management summary.</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card mf-panel-card h-100">
+            <div class="card-body">
+                {% if profile_photo_url %}
+                    <img src="{{ profile_photo_url }}" alt="Profile Photo" class="mf-profile-photo-lg mb-3">
+                {% else %}
+                    <div class="mf-avatar-lg mb-3">{{ user.username|first|upper }}</div>
+                {% endif %}
+                <h6 class="mb-3">Account</h6>
+                <p class="mb-1"><strong>Username:</strong> {{ user.username }}</p>
+                <p class="mb-1"><strong>Email:</strong> {{ user.email|default:'Not set' }}</p>
+                <p class="mb-1"><strong>Phone:</strong> {{ phone_number }}</p>
+                <p class="mb-3"><strong>Member Since:</strong> {{ member_since|date:'d M Y' }}</p>
+                <a href="{% url 'settings' %}" class="btn btn-primary w-100 mb-2">Open Settings</a>
+                <a href="{% url 'lock_screen' %}" class="btn btn-outline-secondary w-100">Lock Screen</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="row g-4">
+            <div class="col-md-4"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Managed Users</p><h5 class="mb-0">{{ managed_users }}</h5></div></div></div>
+            <div class="col-md-4"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Active Users</p><h5 class="mb-0 text-success">{{ active_users }}</h5></div></div></div>
+            <div class="col-md-4"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Inactive Users</p><h5 class="mb-0 text-danger">{{ inactive_users }}</h5></div></div></div>
+            <div class="col-md-4"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Green Zone</p><h5 class="mb-0 text-success">{{ safe_count }}</h5></div></div></div>
+            <div class="col-md-4"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Yellow Zone</p><h5 class="mb-0 text-warning">{{ risky_count }}</h5></div></div></div>
+            <div class="col-md-4"><div class="card mf-mini-card h-100"><div class="card-body"><p class="mf-mini-label mb-1">Red Zone</p><h5 class="mb-0 text-danger">{{ danger_count }}</h5></div></div></div>
+        </div>
+        <div class="card mf-panel-card mt-4">
+            <div class="card-body">
+                <h6 class="mb-2">Recent Audit Activity</h6>
+                {% if latest_audit %}
+                    <p class="mb-1"><strong>{{ latest_audit.action }}</strong> by {% if latest_audit.actor %}{{ latest_audit.actor.username }}{% else %}system{% endif %}</p>
+                    <p class="text-muted mb-0">{{ latest_audit.created_at|date:'d M Y H:i' }}{% if latest_audit.details %} - {{ latest_audit.details }}{% endif %}</p>
+                {% else %}
+                    <p class="mb-0">No audit events available yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
